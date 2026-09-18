@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useMemo } from "react";
+import { CodexConfigButton } from "@/features/codex-config/codex-config-button";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { AlertMessage } from "@/components/alert-message";
@@ -139,6 +140,7 @@ export function ApisPage() {
 				</div>
 			) : (
 				<div className="space-y-6">
+					<CodexConfigButton apiKeys={apiKeys} />
 					<ApiKeysOverview apiKeys={apiKeys} />
 
 					<div className="grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
