@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/hooks/use-auth";
 import { Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,6 +45,7 @@ function matchStatus(apiKey: ApiKey, filter: string): boolean {
 
 export function ApiList({ apiKeys, selectedKeyId, onSelect, onOpenCreate }: ApiListProps) {
   const { t } = useTranslation();
+  const canWrite = useAuthStore(state => state.canWrite);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -85,10 +87,10 @@ export function ApiList({ apiKeys, selectedKeyId, onSelect, onOpenCreate }: ApiL
         </Select>
       </div>
 
-      <Button type="button" size="sm" onClick={onOpenCreate} className="h-8 w-full gap-1.5 text-xs">
+      {canWrite && <Button type="button" size="sm" onClick={onOpenCreate} className="h-8 w-full gap-1.5 text-xs">
         <Plus className="h-3.5 w-3.5" />
         {t("apis.list.createKey")}
-      </Button>
+      </Button>}
 
       <div className="max-h-[calc(100vh-16rem)] space-y-1 overflow-y-auto p-1">
         {filtered.length === 0 ? (

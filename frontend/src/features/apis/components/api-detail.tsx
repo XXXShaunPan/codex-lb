@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/hooks/use-auth";
 import {
 	Ellipsis,
 	KeyRound,
@@ -73,6 +74,7 @@ export function ApiDetail({
 	onToggleActive,
 }: ApiDetailProps) {
 	const { t } = useTranslation();
+  const canWrite = useAuthStore(state => state.canWrite);
 	const [showAccumulated, setShowAccumulated] = useState(false);
 
 	const chartData = useMemo(() => {
@@ -127,7 +129,7 @@ export function ApiDetail({
 		>
 			<div className="flex items-start justify-between">
 				<h2 className="text-base font-semibold">{apiKey.name}</h2>
-				<DropdownMenu>
+				{canWrite && <DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
 							type="button"
@@ -149,7 +151,7 @@ export function ApiDetail({
 							{t("common.actions.regenerate")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
-				</DropdownMenu>
+				</DropdownMenu>}
 			</div>
 
 			{hasDonutData || hasTrends ? (
@@ -224,7 +226,7 @@ export function ApiDetail({
 				allowUsageSummaryFallback={false}
 			/>
 
-			<div className="flex flex-wrap gap-2 border-t pt-4">
+			{canWrite && <div className="flex flex-wrap gap-2 border-t pt-4">
 				{apiKey.isActive ? (
 					<Button
 						type="button"
@@ -260,7 +262,7 @@ export function ApiDetail({
 					<Trash2 className="h-3.5 w-3.5" />
 					{t("common.actions.delete")}
 				</Button>
-			</div>
+			</div>}
 		</div>
 	);
 }

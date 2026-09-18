@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useState } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
@@ -39,6 +40,7 @@ const SettingsPage = lazy(() =>
 );
 
 function AppLayout() {
+  const queryClient = useQueryClient();
   const { hash, key: locationKey, pathname, search } = useLocation();
   const logout = useAuthStore((state) => state.logout);
   const passwordRequired = useAuthStore((state) => state.passwordRequired);
@@ -58,6 +60,7 @@ function AppLayout() {
       <RouteScrollRestoration />
       <AppHeader
         onLogout={() => {
+          queryClient.clear();
           void logout();
         }}
         onAdminLogin={startAdminLogin}
@@ -70,12 +73,12 @@ function AppLayout() {
           resetKey={`${locationKey}:${pathname}${search}${hash}`}
         >
           <Suspense fallback={<RouteLoading />}>
-            <Outlet />
+            {isGuest && !["/reports", "/apis", "/settings"].includes(pathname) ? <Navigate to="/reports" replace /> : <Outlet />}
           </Suspense>
         </RouteErrorBoundary>
       </main>
-      <StatusBar onHeightChange={setStatusBarHeight} />
-      <TelemetryConsentDialog />
+      {!isGuest && <StatusBar onHeightChange={setStatusBarHeight} />}
+      {!isGuest && <TelemetryConsentDialog />}
     </div>
   );
 }

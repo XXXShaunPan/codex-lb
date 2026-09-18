@@ -1,3 +1,4 @@
+import { VisitorLogin } from "@/features/visitor-access/visitor-login";
 import { useEffect } from "react";
 import type { PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
@@ -67,6 +68,7 @@ export function AuthGate({ children }: PropsWithChildren) {
             </div>
           </div>
           <LoginForm />
+          <VisitorLogin />
         </div>
       </div>
     );

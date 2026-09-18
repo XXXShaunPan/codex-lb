@@ -6,28 +6,6 @@ import { MiniQuotaBar } from "@/components/mini-quota-bar";
 import type { ApiKey } from "@/features/api-keys/schemas";
 import { formatPercentNullable } from "@/utils/formatters";
 
-function limitBarColor(percent: number): string {
-  if (percent >= 90) return "bg-red-500";
-  if (percent >= 70) return "bg-orange-500";
-  if (percent >= 40) return "bg-amber-500";
-  return "bg-emerald-500";
-}
-
-function MiniUsageBar({ percent }: { percent: number | null }) {
-  if (percent === null) {
-    return <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted" />;
-  }
-  const clamped = Math.max(0, Math.min(100, percent));
-  return (
-    <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-      <div
-        className={cn("h-full rounded-full", limitBarColor(clamped))}
-        style={{ width: `${clamped}%` }}
-      />
-    </div>
-  );
-}
-
 export type ApiListItemProps = {
   apiKey: ApiKey;
   selected: boolean;
@@ -35,7 +13,7 @@ export type ApiListItemProps = {
 };
 
 function formatLimitPercent(apiKey: ApiKey): number | null {
-  if (apiKey.limits.length === 0) return null;
+  if (apiKey.limits.length === 0) return 0;
   let maxPercent = 0;
   for (const limit of apiKey.limits) {
     if (limit.maxValue > 0) {
@@ -54,11 +32,6 @@ function isExpired(apiKey: ApiKey): boolean {
 export function ApiListItem({ apiKey, selected, onSelect }: ApiListItemProps) {
   const { t } = useTranslation();
   const expired = isExpired(apiKey);
-  const primary = apiKey.pooledRemainingPercentPrimary ?? null;
-  const secondary = apiKey.pooledRemainingPercentSecondary ?? null;
-  const hasPrimary = apiKey.pooledCapacityCreditsPrimary > 0 && primary !== null;
-  const hasSecondary = secondary !== null;
-  const visibleRows = Number(hasPrimary) + Number(hasSecondary);
   const limitPct = formatLimitPercent(apiKey);
 
   return (
@@ -86,43 +59,13 @@ export function ApiListItem({ apiKey, selected, onSelect }: ApiListItemProps) {
           {!apiKey.isActive ? t("common.states.disabled") : expired ? t("common.states.expired") : t("common.states.active")}
         </Badge>
       </div>
-      {visibleRows > 0 ? (
-        <div className={cn("mt-2 grid gap-2", visibleRows > 1 ? "grid-cols-2" : "grid-cols-1")}>
-          {hasPrimary ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground">{t("apis.listItem.pooled5h")}</span>
-                <span className="tabular-nums font-medium">{formatPercentNullable(primary)}</span>
-              </div>
-              <MiniQuotaBar
-                aria-label={t("apis.listItem.pooled5hAria")}
-                percent={primary}
-                testId="pooled-quota-track-5h"
-              />
-            </div>
-          ) : null}
-          {hasSecondary ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground">{t("apis.listItem.pooledWeekly")}</span>
-                <span className="tabular-nums font-medium">{formatPercentNullable(secondary)}</span>
-              </div>
-              <MiniQuotaBar
-                aria-label={t("apis.listItem.pooledWeeklyAria")}
-                percent={secondary}
-                testId="pooled-quota-track-weekly"
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       {limitPct !== null ? (
         <div className="mt-1.5 space-y-1">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">{t("apis.listItem.apiLimit")}</span>
-            <span className="tabular-nums font-medium">{formatPercentNullable(limitPct)}</span>
+            <span className="text-muted-foreground">API_KEY remaining quota</span>
+            <span className="tabular-nums font-medium">{formatPercentNullable(Math.max(0, 100 - limitPct))}</span>
           </div>
-          <MiniUsageBar percent={limitPct} />
+          <MiniQuotaBar testId="api-key-remaining-quota" aria-label="API_KEY remaining quota" percent={Math.max(0, 100 - limitPct)} />
         </div>
       ) : null}
     </button>

@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Eye, EyeOff, LogIn, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
@@ -48,6 +49,8 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const visitor = useAuthStore(state => state.role === "guest");
+  const navItems = CORE_NAV_ITEMS.filter(item => !visitor || ["/reports", "/apis", "/settings"].includes(item.to));
   const [mobileOpen, setMobileOpen] = useState(false);
   const advancedActive = ADVANCED_NAV_ITEMS.some(
     (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
@@ -104,7 +107,7 @@ export function AppHeader({
 
         {/* Desktop nav pills */}
         <nav className="hidden items-center rounded-lg border border-border/50 bg-muted/40 p-0.5 sm:flex">
-          {CORE_NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -127,7 +130,7 @@ export function AppHeader({
               </span>
             </NavLink>
           ))}
-          <DropdownMenu>
+          {!visitor && <DropdownMenu>
             <DropdownMenuTrigger
               data-active={advancedActive}
               className={cn(
@@ -141,7 +144,7 @@ export function AppHeader({
               <ChevronDown className="h-3 w-3" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {ADVANCED_NAV_ITEMS.map((item) => (
+              {(visitor ? [] : ADVANCED_NAV_ITEMS).map((item) => (
                 <DropdownMenuItem key={item.to} asChild>
                   <NavLink to={item.to} className="cursor-pointer">
                     {t(item.labelKey)}
@@ -149,7 +152,7 @@ export function AppHeader({
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
         </nav>
 
         {/* Actions */}
@@ -177,7 +180,7 @@ export function AppHeader({
               {t("common.logout")}
             </Button>
           )}
-          {showAdminLogin && (
+          {showAdminLogin && !visitor && (
             <Button
               type="button"
               size="sm"
@@ -207,7 +210,7 @@ export function AppHeader({
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-0.5 px-4 pt-2">
-                {CORE_NAV_ITEMS.map((item) => (
+                {navItems.map((item) => (
                   <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>
                     {({ isActive }) => (
                       <span
@@ -232,7 +235,7 @@ export function AppHeader({
                 <p className="px-3 pb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                   {t("nav.advanced")}
                 </p>
-                {ADVANCED_NAV_ITEMS.map((item) => (
+                {(visitor ? [] : ADVANCED_NAV_ITEMS).map((item) => (
                   <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>
                     {({ isActive }) => (
                       <span
@@ -272,7 +275,7 @@ export function AppHeader({
                     {t("common.logout")}
                   </button>
                 )}
-                {showAdminLogin && (
+                {showAdminLogin && !visitor && (
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

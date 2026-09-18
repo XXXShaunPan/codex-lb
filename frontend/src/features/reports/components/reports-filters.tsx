@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/features/auth/hooks/use-auth";
 import { useTranslation } from "react-i18next";
 import {
   MultiSelectFilter,
@@ -58,6 +59,7 @@ export function ReportsFilters({
   }));
   const maxDate = localDateISO();
   const dateRangeErrorId = useId();
+  const visitor = useAuthStore(state => state.role === "guest");
   const isDateRangeInvalid = !isReportDateRangeValid(
     filters.startDate,
     filters.endDate,
@@ -83,12 +85,12 @@ export function ReportsFilters({
         );
       })}
 
-      <MultiSelectFilter
+      {!visitor && <MultiSelectFilter
         label={t("dashboard.filters.accounts")}
         values={filters.accountId}
         options={accountOptions}
         onChange={(accountId) => onFiltersChange({ ...filters, accountId })}
-      />
+      />}
       <MultiSelectFilter
         label={t("dashboard.filters.apiKeys")}
         values={filters.apiKeyId}

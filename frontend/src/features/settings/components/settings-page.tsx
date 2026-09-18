@@ -1,3 +1,4 @@
+import { VisitorSettings } from "@/features/visitor-access/visitor-settings";
 import { Suspense, lazy, useState } from "react";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { ApiKeysSection } from "@/features/api-keys/components/api-keys-section";
 import { useAccounts } from "@/features/accounts/hooks/use-accounts";
 import { FirewallSection } from "@/features/firewall/components/firewall-section";
-import { ModelSourcesSettings } from "@/features/model-sources/components/model-sources-settings";
 import { useModelSources } from "@/features/model-sources/hooks/use-model-sources";
 import { QuotaPlannerSection } from "@/features/quota-planner/components/quota-planner-section";
 import { buildSettingsUpdateRequest } from "@/features/settings/payload";
@@ -18,7 +18,6 @@ import { AdvancedSettingsGroup } from "@/features/settings/components/advanced-s
 import { AppearanceSettings } from "@/features/settings/components/appearance-settings";
 import { ConversationArchiveSettings } from "@/features/settings/components/conversation-archive-settings";
 import { DataRetentionSettings } from "@/features/settings/components/data-retention-settings";
-import { GuestAccessSettings } from "@/features/settings/components/guest-access-settings";
 import { ImportSettings } from "@/features/settings/components/import-settings";
 import { ModelCatalogueSettings } from "@/features/settings/components/model-catalogue-settings";
 import { PasswordSettings } from "@/features/settings/components/password-settings";
@@ -62,6 +61,11 @@ const FIREWALL_LAYOUT_QUERY_KEYS = [
 ] as const;
 
 export function SettingsPage() {
+  const visitor = useAuthStore(state => state.role === "guest");
+  return visitor ? <AppearanceSettings /> : <AdminSettingsPage />;
+}
+
+function AdminSettingsPage() {
   const { t } = useTranslation();
   const location = useLocation();
   const expandAdvanced = shouldExpandAdvancedSettings(location.search, location.hash);
@@ -171,12 +175,7 @@ export function SettingsPage() {
             <ImportSettings settings={settings} busy={controlsDisabled} onSave={handleSave} />
             <ResetCreditSettings settings={settings} busy={controlsDisabled} onSave={handleSave} />
             {canWrite ? (
-              <GuestAccessSettings
-                settings={settings}
-                busy={busy}
-                onSave={handleSave}
-                onRefresh={() => settingsQuery.refetch()}
-              />
+              <VisitorSettings />
             ) : null}
             {canWrite ? <PasswordSettings disabled={busy} /> : null}
             {canWrite && passwordManagementEnabled ? (
@@ -258,7 +257,6 @@ export function SettingsPage() {
                   }
                 />
               ) : null}
-              <ModelSourcesSettings disabled={controlsDisabled} />
               <ModelCatalogueSettings disabled={controlsDisabled} />
               <FirewallSection disabled={controlsDisabled} />
               <QuotaPlannerSection disabled={controlsDisabled} />
