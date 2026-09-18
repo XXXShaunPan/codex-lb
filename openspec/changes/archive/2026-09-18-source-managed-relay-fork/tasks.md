@@ -9,5 +9,5 @@
 - [x] Add focused backend and frontend regression tests and CI.
 - [x] Validate the one-head database migration against a production copy.
 - [x] Build the production frontend and exercise public HTTP behavior.
-- [ ] Back up and deploy without sitecustomize or external UI assets.
-- [ ] Publish the patch stack, custom tag, specs and maintenance runbook.
+- [x] Back up and deploy without sitecustomize or external UI assets.
+- [x] Publish the patch stack, custom tag, specs and maintenance runbook.
