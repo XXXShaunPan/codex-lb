@@ -213,7 +213,6 @@ from app.modules.firewall.repository import FirewallRepository
 from app.modules.firewall.service import FirewallRepositoryPort, FirewallService
 from app.modules.model_sources.catalog import (
     source_model_audio_cost_usd,
-    source_model_cost_usd,
     source_model_request_overrides,
     source_model_supported_tool_types,
     source_model_supports_reasoning,
@@ -252,6 +251,8 @@ from app.modules.model_sources.selection import (
     effective_model_for_api_key,
     select_responses_model_source,
 )
+from app.modules.provider_billing.service import quote_usage
+from app.modules.provider_billing.service import source_usage_cost_usd as billing_cost
 from app.modules.proxy import affinity as proxy_affinity_module
 from app.modules.proxy import images_service as images_service_module
 from app.modules.proxy import service as proxy_service_module
@@ -368,6 +369,7 @@ from app.modules.request_logs.repository import RequestLogsRepository
 from app.modules.usage.mappers import usage_history_to_window_row
 from app.modules.usage.repository import AdditionalUsageRepository, UsageRepository
 from app.modules.usage.updater import UsageUpdater
+from app.modules.virtual_accounts.routing import unified_audio, unified_chat, with_route_affinity
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -1154,6 +1156,7 @@ async def wham_agent_identities_jwks(
         }
     },
 )
+@with_route_affinity
 async def responses(
     request: Request,
     # ``dict[str, Any]``: the body is ``json.loads`` output that the request
@@ -1402,6 +1405,7 @@ async def responses_websocket(
         }
     },
 )
+@with_route_affinity
 async def v1_responses(
     request: Request,
     payload: V1ResponsesRequest = Body(...),
@@ -4739,6 +4743,7 @@ async def v1_chat_completions(
     )
 
 
+@unified_chat
 async def _select_chat_model_source(
     model: str,
     api_key: ApiKeyData | None,
@@ -4924,6 +4929,7 @@ async def _select_embeddings_model_source(model: str, api_key: ApiKeyData | None
         return source
 
 
+@unified_audio
 async def _select_audio_transcriptions_model_source(model: str, api_key: ApiKeyData | None) -> ModelSource | None:
     assigned_source_ids = _allowed_source_ids_for_api_key(api_key)
     exact_allowed_models = _exact_source_allowed_models_for_api_key(api_key)
@@ -5436,7 +5442,10 @@ def _shape_source_responses_payload(
             }
         else:
             source_payload["reasoning"] = {"effort": source_reasoning_effort}
-    strip_replayed_tool_call_namespaces_from_payload(source_payload)
+    from app.modules.provider_compatibility.namespaces import source_preserves_tool_call_namespaces
+
+    if not source_preserves_tool_call_namespaces(source, payload.model):
+        strip_replayed_tool_call_namespaces_from_payload(source_payload)
     source_payload["stream"] = bool(payload.stream)
     _apply_source_response_request_overrides(source_payload, source_model_request_overrides(source, payload.model))
     _drop_unsupported_source_response_tools(
@@ -9138,16 +9147,7 @@ async def _settle_source_reservation(
 
 
 def _source_usage_cost_usd(source: ModelSource, model: str, usage: SourceUsage | None) -> float | None:
-    if usage is None:
-        return None
-    cost_usd = source_model_cost_usd(
-        source,
-        model,
-        input_tokens=usage.input_tokens,
-        output_tokens=usage.output_tokens,
-        cached_input_tokens=usage.cached_input_tokens,
-    )
-    return 0.0 if cost_usd is None else cost_usd
+    return billing_cost(source, model, usage)
 
 
 async def _log_source_chat_completion(
@@ -9169,6 +9169,7 @@ async def _log_source_chat_completion(
         async with get_background_session() as session:
             await RequestLogsRepository(session).add_log(
                 account_id=None,
+                billing_quote=quote_usage(source, model, usage) if cost_usd_override is None else None,
                 model_source_id=source.id,
                 model_source_kind=source.kind,
                 api_key_id=api_key.id if api_key is not None else None,

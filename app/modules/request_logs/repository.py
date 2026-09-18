@@ -58,6 +58,8 @@ from app.modules.accounts.usage_time_rollup_read import (
     read_hourly_window,
     sum_demand_window,
 )
+from app.modules.provider_billing.service import BillingQuote
+from app.modules.virtual_accounts.logs import with_virtual_filters, with_virtual_options, with_virtual_pagination
 
 
 @dataclass(frozen=True, slots=True)
@@ -1041,6 +1043,9 @@ class RequestLogsRepository:
         upstream_proxy_fallback_used: bool | None = None,
         upstream_proxy_fail_closed_reason: str | None = None,
         archive_request_id: str | None = None,
+        billing_quote: BillingQuote | None = None,
+        charged_usd: float | None = None,
+        usage_basis: str = "reported",
     ) -> RequestLog:
         async with sqlite_writer_section():
             # Telemetry write: this transaction only appends one request-log
@@ -1139,6 +1144,12 @@ class RequestLogsRepository:
                     log.id = int(inserted_primary_key[0])
                     make_transient_to_detached(log)
                     self._session.add(log)
+                    if billing_quote is not None:
+                        from app.modules.provider_billing.repository import record_quote
+
+                        await record_quote(
+                            self._session, log, billing_quote, charged_usd=charged_usd, usage_basis=usage_basis
+                        )
                 await self._session.commit()
                 return log
             except sa_exc.ResourceClosedError:
@@ -1243,6 +1254,7 @@ class RequestLogsRepository:
                 raise
             return len(logs)
 
+    @with_virtual_pagination
     async def list_recent(
         self,
         limit: int = 50,
@@ -1468,6 +1480,7 @@ class RequestLogsRepository:
         result = await self._session.execute(select(Account.plan_type).where(Account.id == account_id).limit(1))
         return result.scalar_one_or_none()
 
+    @with_virtual_options
     async def list_filter_options(
         self,
         since: datetime | None = None,
@@ -1629,6 +1642,7 @@ class RequestLogsRepository:
         )
         return {key_id: (name, key_prefix) for key_id, name, key_prefix in result.all() if key_id and name}
 
+    @with_virtual_filters
     def _build_filters(
         self,
         *,

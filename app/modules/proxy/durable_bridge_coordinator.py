@@ -31,6 +31,7 @@ from app.modules.proxy.durable_bridge_repository import (
     DurableBridgeTranscriptTurn,
     durable_bridge_api_key_scope,
 )
+from app.modules.virtual_accounts.continuity import ignore_empty_tombstones
 
 _DURABLE_TURN_STATE_ALIAS = "turn_state"
 _DURABLE_PREVIOUS_RESPONSE_ALIAS = "previous_response_id"
@@ -100,6 +101,7 @@ class DurableBridgeSessionCoordinator:
         self._session_factory = session_factory
         self._operation_abandonment_scan_cursor: DurableBridgeOperationAbandonmentScanCursor | None = None
 
+    @ignore_empty_tombstones
     async def lookup_request_targets(
         self,
         *,

@@ -17,6 +17,7 @@ from app.db.models import ModelSource
 from app.db.session import detach_session_objects, get_background_session
 from app.modules.api_keys.service import ApiKeyData
 from app.modules.model_sources.repository import ModelSourcesRepository
+from app.modules.virtual_accounts.routing import unified_responses
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ def allowed_source_ids_for_api_key(api_key: ApiKeyData | None) -> set[str] | Non
     return set(api_key.assigned_source_ids)
 
 
+@unified_responses
 async def select_responses_model_source(
     model: str,
     api_key: ApiKeyData | None,

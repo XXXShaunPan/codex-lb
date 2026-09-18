@@ -53,6 +53,7 @@ from app.modules.accounts.service import (
     AccountUsageResetCreditsUnavailableError,
     InvalidAuthJsonError,
 )
+from app.modules.virtual_accounts.accounts import with_source_accounts
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ _ACCOUNT_IMPORT_OPENAPI_EXTRA = {
 
 
 @router.get("", response_model=AccountsResponse)
+@with_source_accounts
 async def list_accounts(
     context: AccountsContext = Depends(get_accounts_context),
 ) -> AccountsResponse:

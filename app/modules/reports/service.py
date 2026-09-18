@@ -21,6 +21,7 @@ from app.modules.reports.schemas import (
     ReportSummary,
     UserAgentCostEntry,
 )
+from app.modules.virtual_accounts.reports import with_virtual_reports
 
 
 class InvalidReportDateRangeError(ValueError):
@@ -31,6 +32,7 @@ class ReportsService:
     def __init__(self, repository: ReportsRepository) -> None:
         self._repository = repository
 
+    @with_virtual_reports
     async def get_reports(
         self,
         start_date: date | None = None,

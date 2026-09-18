@@ -5,7 +5,7 @@ import json
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import AbstractContextManager, AsyncExitStack, nullcontext
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from json import JSONDecodeError
 from math import isfinite
 from typing import Any, Literal, cast
@@ -26,6 +26,7 @@ from app.core.utils.shared_future import (
 from app.core.utils.shared_future import _await_task_deferring_cancellation
 from app.core.utils.sse import extract_sse_data
 from app.db.models import ModelSource
+from app.modules.provider_billing.service import BillingQuote
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class SourceUsage:
     input_tokens: int
     output_tokens: int
     cached_input_tokens: int = 0
+    cache_write_tokens: int | None = None
+    service_tier: str | None = None
+    billing_quotes: dict[tuple[str, str], BillingQuote | None] = field(default_factory=dict, compare=False, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1119,14 +1123,23 @@ def _usage_from_chat_payload(payload: Mapping[str, JsonValue]) -> SourceUsage | 
     usage = payload.get("usage")
     if not is_json_mapping(usage):
         return None
-    return _usage_from_mapping(usage)
+    parsed = _usage_from_mapping(usage)
+    return _usage_with_tier(parsed, payload)
 
 
 def _usage_from_responses_payload(payload: Mapping[str, JsonValue]) -> SourceUsage | None:
     usage = payload.get("usage")
     if not is_json_mapping(usage):
         return None
-    return _usage_from_responses_mapping(usage)
+    parsed = _usage_from_responses_mapping(usage)
+    return _usage_with_tier(parsed, payload)
+
+
+def _usage_with_tier(usage: SourceUsage | None, payload: Mapping[str, JsonValue]) -> SourceUsage | None:
+    tier = payload.get("service_tier")
+    if usage is None or not isinstance(tier, str) or tier not in {"default", "standard", "priority", "fast", "flex"}:
+        return usage
+    return replace(usage, service_tier=str(tier))
 
 
 def _usage_from_embeddings_payload(payload: Mapping[str, JsonValue]) -> SourceUsage | None:
@@ -1246,6 +1259,7 @@ def _usage_from_mapping(usage: Mapping[str, JsonValue]) -> SourceUsage | None:
         input_tokens=prompt_tokens,
         output_tokens=completion_tokens,
         cached_input_tokens=max(0, min(cached_tokens, prompt_tokens)),
+        cache_write_tokens=_cache_write_tokens(usage),
     )
 
 
@@ -1267,7 +1281,13 @@ def _usage_from_responses_mapping(usage: Mapping[str, JsonValue]) -> SourceUsage
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cached_input_tokens=max(0, min(cached_tokens, input_tokens)),
+        cache_write_tokens=_cache_write_tokens(usage),
     )
+
+
+def _cache_write_tokens(usage: Mapping[str, JsonValue]) -> int | None:
+    value = usage.get("cache_creation_input_tokens")
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
 def _usage_from_total_tokens_mapping(usage: Mapping[str, JsonValue]) -> SourceUsage | None:

@@ -13,6 +13,7 @@ from app.modules.dashboard.schemas import (
 )
 from app.modules.model_sources.catalog import source_models_to_upstream_models
 from app.modules.model_sources.repository import ModelSourcesRepository
+from app.modules.virtual_accounts.accounts import project_dashboard
 
 router = APIRouter(
     prefix="/api",
@@ -26,7 +27,7 @@ async def get_overview(
     timeframe: DashboardOverviewTimeframeKey = Query("7d"),
     context: DashboardContext = Depends(get_dashboard_context),
 ) -> DashboardOverviewResponse:
-    return await context.service.get_overview(timeframe)
+    return await project_dashboard(await context.service.get_overview(timeframe))
 
 
 @router.get("/dashboard/projections", response_model=DashboardProjectionsResponse)

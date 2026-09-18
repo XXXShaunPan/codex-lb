@@ -779,6 +779,7 @@ from app.modules.proxy.work_admission import (
     UPSTREAM_WEBSOCKET_CONNECT_LIMIT,
     WorkAdmissionController,
 )
+from app.modules.virtual_accounts.routing import account_control_fallback
 
 
 def get_settings() -> _Settings:
@@ -1434,6 +1435,7 @@ class ProxyService(
         request_state.account_response_create_release = None
         await self._load_balancer.release_account_lease(lease)
 
+    @account_control_fallback
     async def _select_account_with_budget_compatible(self, deadline: float, **kwargs: object) -> AccountSelection:
         affinity_policy = kwargs.pop("affinity_policy", None)
         if isinstance(affinity_policy, _AffinityPolicy):

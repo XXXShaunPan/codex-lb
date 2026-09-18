@@ -37,6 +37,7 @@ from app.modules.api_keys.repository import (
     _Unset,
 )
 from app.modules.usage.repository import UsageRepository
+from app.modules.virtual_accounts.assignments import create_with_unified_assignments, update_with_unified_assignments
 
 _SQLITE_BUSY_RETRY_ATTEMPTS = 4
 _SQLITE_BUSY_RETRY_BASE_SECONDS = 0.1
@@ -470,6 +471,7 @@ class ApiKeysService:
         self._usage_repository = usage_repository
         self._last_used_coalescer = last_used_coalescer or get_api_key_last_used_coalescer()
 
+    @create_with_unified_assignments
     async def create_key(self, payload: ApiKeyCreateData) -> ApiKeyCreatedData:
         _validate_unique_limit_rule_identities(payload.limits)
         now = utcnow()
@@ -587,6 +589,7 @@ class ApiKeysService:
             for row in rows
         ]
 
+    @update_with_unified_assignments
     async def update_key(
         self,
         key_id: str,

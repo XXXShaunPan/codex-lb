@@ -90,7 +90,6 @@ from app.modules.api_keys.service import (
     ApiKeyRequestUsageBudget,
     ApiKeyUsageReservationData,
 )
-from app.modules.model_sources.catalog import source_model_cost_usd
 from app.modules.model_sources.forwarding import (
     ModelSourceForwardingError,
     SourceChatStream,
@@ -101,6 +100,8 @@ from app.modules.model_sources.forwarding import (
     TimeoutPhase,
     classify_responses_frame,
 )
+from app.modules.provider_billing.service import BillingQuote, quote_usage
+from app.modules.provider_billing.service import source_usage_cost_usd as billing_cost
 from app.modules.proxy._service.support import _request_log_client_fields
 from app.modules.proxy.affinity import _owner_lookup_session_id_from_headers
 from app.modules.proxy.model_source_pins import PinIntent, PinWriteExecutor, PinWriteOutcome
@@ -296,18 +297,7 @@ def error_message_from_payload(payload: Mapping[str, JsonValue]) -> str | None:
 
 
 def source_usage_cost_usd(source: ModelSource, model: str, usage: SourceUsage | None) -> float | None:
-    """Source pricing for ``usage``; unpriced entries cost ``0.0`` (never ``None`` for known usage)."""
-
-    if usage is None:
-        return None
-    cost_usd = source_model_cost_usd(
-        source,
-        model,
-        input_tokens=usage.input_tokens,
-        output_tokens=usage.output_tokens,
-        cached_input_tokens=usage.cached_input_tokens,
-    )
-    return 0.0 if cost_usd is None else cost_usd
+    return billing_cost(source, model, usage)
 
 
 def _reservation_requires_usage(reservation: ApiKeyUsageReservationData | None) -> bool:
@@ -472,6 +462,8 @@ class SourceDispatch:
     # (streams expose it through the usage holder).
     source_response_id: str | None = None
     settlement_failed: bool = False
+    settlement_quote: BillingQuote | None = None
+    settlement_usage_basis: str = "reported"
     _source_closed: bool = field(default=False, init=False, repr=False)
     _reservation_done: bool = field(default=False, init=False, repr=False)
     _claims_released: bool = field(default=False, init=False, repr=False)
@@ -640,6 +632,8 @@ class SourceDispatch:
                 self.delta_chars,
             )
             _inc(model_source_usage_estimated_total, source_id=self.source.id, cause=cause)
+        self.settlement_quote = quote_usage(self.source, self.model, usage)
+        self.settlement_usage_basis = "estimated:" + cause if cause else "reported"
         settled = False
         try:
             settled, _cancellation = await _await_result_deferring_cancellation(
@@ -739,12 +733,17 @@ class SourceDispatch:
         if source_response_id is None and holder is not None and holder.response_id:
             source_response_id = holder.response_id
         _useragent, _useragent_group, conversation_id = _request_log_client_fields(headers)
+        quote = self.settlement_quote or quote_usage(self.source, self.model, usage)
+        charged = quote.cost_usd if quote is not None and status != "error" else 0.0
         try:
             async with get_background_session() as session:
                 await RequestLogsRepository(session).add_log(
                     account_id=None,
                     request_id=source_response_id or proxy_request_id,
                     archive_request_id=proxy_request_id,
+                    billing_quote=quote,
+                    charged_usd=charged,
+                    usage_basis=self.settlement_usage_basis,
                     model_source_id=self.source.id,
                     model_source_kind=self.source.kind,
                     api_key_id=self.api_key.id if self.api_key is not None else None,
@@ -764,7 +763,7 @@ class SourceDispatch:
                     upstream_transport="openai_compatible_http",
                     source=self.request_log_source,
                     requested_service_tier=self.requested_service_tier,
-                    service_tier=None,
+                    service_tier=usage.service_tier if usage is not None else None,
                     useragent=headers.get("user-agent"),
                     conversation_id=conversation_id,
                     client_ip=resolve_request_client_host(request),

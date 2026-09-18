@@ -29,6 +29,7 @@ from app.modules.api_keys.service import (
     ApiKeyValidationError,
     LimitRuleInput,
 )
+from app.modules.virtual_accounts.assignments import unified_key_response
 
 router = APIRouter(
     prefix="/api/api-keys",
@@ -37,6 +38,7 @@ router = APIRouter(
 )
 
 
+@unified_key_response
 def _to_response(row: ApiKeyData) -> ApiKeyResponse:
     return ApiKeyResponse(
         id=row.id,

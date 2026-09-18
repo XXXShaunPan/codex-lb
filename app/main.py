@@ -785,6 +785,9 @@ async def lifespan(app: FastAPI):
                 warn_threshold_seconds=settings.event_loop_lag_warn_threshold_seconds,
             )
         )
+    from app.modules.virtual_accounts.continuity import _sweep_ineligible_durable_continuity
+
+    await _sweep_ineligible_durable_continuity()
     startup_module._startup_complete = True
 
     try:
@@ -992,6 +995,12 @@ def create_app() -> FastAPI:
         ),
     )
     add_backend_api_codex_v1_alias_middleware(app)
+    from app.modules.visitor_access.service import VisitorPortalMiddleware
+
+    app.add_middleware(VisitorPortalMiddleware)
+    from app.core.relay_build import RelayBuildMiddleware
+
+    app.add_middleware(RelayBuildMiddleware)
     add_app_version_middleware(app)
     add_exception_handlers(app)
     add_trusted_proxy_headers_middleware(app)
@@ -1026,6 +1035,9 @@ def create_app() -> FastAPI:
     app.include_router(sticky_sessions_api.router)
     app.include_router(automations_api.router)
     app.include_router(api_keys_api.router)
+    from app.modules.provider_billing.api import router as provider_billing_router
+
+    app.include_router(provider_billing_router)
     app.include_router(model_sources_api.router)
     app.include_router(health_api.router)
 

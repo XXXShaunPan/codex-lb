@@ -558,6 +558,9 @@ class RequestLog(Base):
     latency_bridge_queue_wait_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prewarm_status: Mapped[str | None] = mapped_column(String, nullable=True)
     prewarm_latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Existing upstream migrations retain these observational columns.
+    prewarm_canary_bucket: Mapped[str | None] = mapped_column(String, nullable=True)
+    prewarm_eligible_reason: Mapped[str | None] = mapped_column(String, nullable=True)
     session_previous_gap_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False)
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -2596,3 +2599,7 @@ Index(
     AdditionalUsageHistory.used_percent.desc(),
     AdditionalUsageHistory.id.desc(),
 )
+
+# Native relay tables share the upstream metadata and migration lifecycle.
+from app.modules.provider_billing import models as _provider_billing_models  # noqa: E402,F401
+from app.modules.visitor_access import models as _visitor_access_models  # noqa: E402,F401

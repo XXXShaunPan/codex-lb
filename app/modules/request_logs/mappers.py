@@ -12,6 +12,7 @@ from app.core.usage.logs import (
 )
 from app.db.models import RequestLog
 from app.modules.request_logs.schemas import RequestLogCostBreakdown, RequestLogEntry
+from app.modules.virtual_accounts.logs import with_virtual_identity
 
 RATE_LIMIT_CODES = {"rate_limit_exceeded", "usage_limit_reached"}
 QUOTA_CODES = {"insufficient_quota", "usage_not_included", "quota_exceeded"}
@@ -33,6 +34,7 @@ def log_status(log: RequestLog) -> str:
     return normalize_log_status(log.status, log.error_code)
 
 
+@with_virtual_identity
 def to_request_log_entry(
     log: RequestLog,
     *,

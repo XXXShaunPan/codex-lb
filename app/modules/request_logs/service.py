@@ -22,6 +22,7 @@ from app.modules.request_logs.schemas import (
     RequestLogConversation,
     RequestLogEntry,
 )
+from app.modules.virtual_accounts.logs import with_historical_control_identity
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +85,7 @@ class RequestLogsService:
     def __init__(self, repo: RequestLogsRepository) -> None:
         self._repo = repo
 
+    @with_historical_control_identity
     async def list_recent(
         self,
         limit: int = 50,
