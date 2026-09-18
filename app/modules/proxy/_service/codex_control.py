@@ -585,6 +585,7 @@ class _CodexControlMixin:
                 api_key=api_key,
                 request_id=request_id,
                 model=None,
+                request_kind=request_kind,
                 latency_ms=int((_service_time().monotonic() - start) * 1000),
                 status=log_status,
                 error_code=None if sensitive_realtime_request else log_error_code,

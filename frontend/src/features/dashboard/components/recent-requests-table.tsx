@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { PaginationControls } from "@/features/dashboard/components/filters/pagination-controls";
 import { RequestArchivePanel } from "@/features/conversation-archive/components/request-archive-panel";
+import { BillingDetails } from "@/features/provider-billing/billing-details";
 import {
   ALL_REQUEST_LOG_COLUMNS,
   MAX_REQUEST_LOG_COLUMN_WIDTH,
@@ -455,7 +456,7 @@ export function RecentRequestsTable({
                   {isColumnVisible("model") ? <TableCell className="truncate align-top">
                     <div className="leading-tight">
                       <span className="font-mono text-xs">
-                        {formatModelLabel(request.model, request.reasoningEffort, visibleServiceTier)}
+                        {formatModelLabel(request.model || ((request.requestKind.startsWith("codex_control_") || request.source?.startsWith("codex_control:")) ? (request.source?.startsWith("codex_control:") ? request.source.replace("codex_control:", "codex-control/") : request.requestKind.replace("codex_control_", "codex-control/")).replaceAll("_", "-") : "non-model/request"), request.reasoningEffort, visibleServiceTier)}
                       </span>
                       {request.requestKind === "warmup" || request.requestKind === "limit_warmup" ? (
                         <div className="mt-1 text-xs text-muted-foreground">
@@ -595,7 +596,7 @@ export function RecentRequestsTable({
               />
               <div className="grid gap-3 sm:grid-cols-3">
                 <RequestDetailField label={t("dashboard.requests.columns.status")} value={selectedRequest ? t(`dashboard.requestStatus.${selectedRequest.status}`, { defaultValue: REQUEST_STATUS_LABELS[selectedRequest.status] ?? selectedRequest.status }) : "—"} />
-                <RequestDetailField label={t("dashboard.requests.columns.model")} value={selectedRequest ? formatModelLabel(selectedRequest.model, selectedRequest.reasoningEffort, selectedRequest.actualServiceTier ?? selectedRequest.serviceTier) : "—"} mono />
+                <RequestDetailField label={t("dashboard.requests.columns.model")} value={selectedRequest ? formatModelLabel(selectedRequest.model || (selectedRequest.requestKind.startsWith("codex_control_") ? selectedRequest.requestKind.replace("codex_control_", "codex-control/").replaceAll("_", "-") : "non-model/request"), selectedRequest.reasoningEffort, selectedRequest.actualServiceTier ?? selectedRequest.serviceTier) : "—"} mono />
                 <RequestDetailField label={t("dashboard.requestDetails.requestKind")} value={selectedRequest ? (REQUEST_KIND_LABELS[selectedRequest.requestKind] ?? selectedRequest.requestKind) : "—"} />
                 <RequestDetailField label={t("dashboard.requests.columns.plan")} value={selectedRequest?.planType ? formatSlug(selectedRequest.planType) : "—"} />
                 <RequestDetailField label={t("dashboard.requestDetails.elapsed")} value={formatElapsed(selectedRequest?.latencyMs ?? null)} />
@@ -705,6 +706,7 @@ export function RecentRequestsTable({
               ) : null}
             </div>
 
+            {isAdmin && selectedRequest?.modelSourceId ? <BillingDetails requestId={selectedRequest.requestId} /> : null}
             {isAdmin ? (
               <RequestArchivePanel
                 requestId={selectedRequest?.archiveRequestId ?? selectedRequest?.requestId}
