@@ -174,6 +174,10 @@ export function DashboardPage() {
 
   const handleAccountAction = useCallback(
     (account: AccountSummary, action: string) => {
+      if (account.accountId.startsWith("model-source:")) {
+        navigate(`/accounts?selected=${account.accountId}`);
+        return;
+      }
       switch (action) {
         case "details":
           navigate(`/accounts?selected=${account.accountId}`);

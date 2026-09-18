@@ -161,10 +161,10 @@ export function AccountListItem({
           />
         ) : null}
       </div>
-      <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-[10px] text-muted-foreground">
+      {!account.accountId.startsWith("model-source:") && <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-[10px] text-muted-foreground">
         <span className="shrink-0">{warmupLabel}</span>
         <span className="min-w-0 truncate">{warmupMeta}</span>
-      </div>
+      </div>}
     </button>
   );
 }

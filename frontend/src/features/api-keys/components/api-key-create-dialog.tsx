@@ -29,7 +29,6 @@ import { LimitRulesEditor } from "@/features/api-keys/components/limit-rules-edi
 import { ModelMultiSelect } from "@/features/api-keys/components/model-multi-select";
 import { ReasoningEffortsMultiSelect } from "@/features/api-keys/components/reasoning-efforts-multi-select";
 import { UsageSectionsMultiSelect } from "@/features/api-keys/components/usage-sections-multi-select";
-import { ModelSourceMultiSelect } from "@/features/model-sources/components/model-source-multi-select";
 import type {
   ApiKeyCreateRequest,
   LimitRuleCreate,
@@ -191,14 +190,6 @@ function ApiKeyCreateForm({ busy, onClose, onSubmit }: ApiKeyCreateFormProps) {
             <div className="space-y-1">
               <p className="text-sm font-medium">{t("apiKeys.form.assignedAccounts")}</p>
               <AccountMultiSelect value={draft.selectedAccountIds} onChange={(selectedAccountIds) => updateDraft({ selectedAccountIds })} />
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm font-medium">{t("apiKeys.form.assignedModelSources")}</p>
-              <ModelSourceMultiSelect
-                value={draft.selectedSourceIds}
-                onChange={(selectedSourceIds) => updateDraft({ selectedSourceIds })}
-              />
             </div>
 
             <div className="space-y-1">

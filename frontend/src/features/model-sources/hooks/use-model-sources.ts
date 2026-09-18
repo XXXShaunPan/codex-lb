@@ -28,6 +28,7 @@ export function useModelSources() {
     onSuccess: () => {
       toast.success(t("modelSources.toasts.created"));
       void queryClient.invalidateQueries({ queryKey: ["model-sources", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["api-keys", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["models"] });
     },
@@ -42,6 +43,7 @@ export function useModelSources() {
     onSuccess: () => {
       toast.success(t("modelSources.toasts.updated"));
       void queryClient.invalidateQueries({ queryKey: ["model-sources", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["api-keys", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["models"] });
       // The subscription-overflow preflight reports this source's model
@@ -60,6 +62,7 @@ export function useModelSources() {
     onSuccess: () => {
       toast.success(t("modelSources.toasts.deleted"));
       void queryClient.invalidateQueries({ queryKey: ["model-sources", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts", "list"] });
       // Deleting the designated subscription-overflow source clears that
       // setting server-side; refetch so the routing card reflects it, and drop
       // any preflight report that still names the deleted source.

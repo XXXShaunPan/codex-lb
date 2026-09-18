@@ -30,7 +30,6 @@ import { AccountMultiSelect } from "@/features/api-keys/components/account-multi
 import { ModelMultiSelect } from "@/features/api-keys/components/model-multi-select";
 import { ReasoningEffortsMultiSelect } from "@/features/api-keys/components/reasoning-efforts-multi-select";
 import { UsageSectionsMultiSelect } from "@/features/api-keys/components/usage-sections-multi-select";
-import { ModelSourceMultiSelect } from "@/features/model-sources/components/model-source-multi-select";
 import type {
   ApiKey,
   ApiKeyUpdateRequest,
@@ -240,33 +239,6 @@ function ApiKeyEditForm({ apiKey, busy, onSubmit, onClose }: ApiKeyEditFormProps
             <div className="space-y-1">
               <div className="text-sm font-medium">{t("apiKeys.form.assignedAccounts")}</div>
               <AccountMultiSelect value={draft.selectedAccountIds} onChange={(selectedAccountIds) => updateDraft({ selectedAccountIds })} />
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-sm font-medium">{t("apiKeys.form.assignedModelSources")}</div>
-              <ModelSourceMultiSelect
-                value={draft.selectedSourceIds}
-                onChange={(selectedSourceIds) => updateDraft({ selectedSourceIds })}
-              />
-              {apiKey.sourceAssignmentScopeEnabled &&
-              apiKey.assignedSourceIds.length === 0 &&
-              draft.selectedSourceIds.length === 0 ? (
-                <div className="space-y-1 rounded-md border border-destructive/50 p-2 text-xs">
-                  <p className="text-muted-foreground">
-                    {t("apiKeys.form.missingSourceRestriction")}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="edit-api-key-clear-source-scope"
-                      checked={draft.clearSourceScope}
-                      onCheckedChange={(checked) => updateDraft({ clearSourceScope: checked === true })}
-                    />
-                    <label htmlFor="edit-api-key-clear-source-scope" className="cursor-pointer">
-                      {t("apiKeys.form.removeSourceRestriction")}
-                    </label>
-                  </div>
-                </div>
-              ) : null}
             </div>
 
             <div className="space-y-1">

@@ -32,6 +32,7 @@ export type AccountListProps = {
   onSelect: (accountId: string) => void;
   onOpenImport: () => void;
   onOpenOauth: () => void;
+  onOpenSource?: () => void;
   sortMode?: AccountSortMode;
   onSortModeChange?: (sortMode: AccountSortMode) => void;
   showResetCreditBadges?: boolean;
@@ -44,6 +45,7 @@ export function AccountList({
   onSelect,
   onOpenImport,
   onOpenOauth,
+  onOpenSource,
   sortMode,
   onSortModeChange,
   showResetCreditBadges = true,
@@ -184,6 +186,7 @@ export function AccountList({
       ) : null}
 
       <AddAccountDialog
+        onAddSource={onOpenSource}
         open={chooserOpen}
         onOpenChange={setChooserOpen}
         onImport={onOpenImport}

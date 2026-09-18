@@ -1,3 +1,6 @@
+import { SourceAccountDetail } from "@/features/virtual-accounts/source-account-detail";
+import { ModelSourceCreateDialog } from "@/features/model-sources/components/model-source-create-dialog";
+import { useModelSources } from "@/features/model-sources/hooks/use-model-sources";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
@@ -60,6 +63,8 @@ export function AccountsPage() {
   const canWrite = useAuthStore((state) => state.canWrite);
 
   const importDialog = useDialogState();
+  const sourceDialog = useDialogState();
+  const sources = useModelSources();
   const oauthDialog = useDialogState();
   const deleteDialog = useDialogState<string>();
   type ResetCreditDialogTarget = { accountId: string; availableResetCredits: number };
@@ -112,7 +117,7 @@ export function AccountsPage() {
         : null,
     [accounts, resolvedSelectedAccountId],
   );
-  const resetCreditsQuery = useAccountUsageResetCredits(selectedAccount?.accountId ?? null);
+  const resetCreditsQuery = useAccountUsageResetCredits(selectedAccount?.accountId.startsWith("model-source:") ? null : selectedAccount?.accountId ?? null);
 
   const mutationBusy =
     importMutation.isPending ||
@@ -182,6 +187,7 @@ export function AccountsPage() {
                 sortMode={accountSortMode}
                 onSortModeChange={setAccountSortMode}
                 showResetCreditBadges={showResetCreditBadges}
+                onOpenSource={() => sourceDialog.show()}
                 onOpenImport={() => importDialog.show()}
                 onOpenOauth={() => {
                   setOauthAccountId(null);
@@ -192,7 +198,7 @@ export function AccountsPage() {
             </div>
           </div>
 
-          <AccountDetail
+          {selectedAccount?.accountId.startsWith("model-source:") ? <SourceAccountDetail sourceId={selectedAccount.accountId.slice("model-source:".length)} /> : <AccountDetail
             account={selectedAccount}
             showAccountId={selectedAccount?.isEmailDuplicate === true}
             busy={mutationBusy}
@@ -246,10 +252,11 @@ export function AccountsPage() {
             resetCredits={resetCreditsQuery.data?.rateLimitResetCredits ?? null}
             resetCreditsLoading={resetCreditsQuery.isFetching}
             resetCreditsUnavailable={!!resetCreditsQuery.error}
-          />
+          />}
         </div>
       )}
 
+      <ModelSourceCreateDialog open={sourceDialog.open} onOpenChange={sourceDialog.onOpenChange} busy={sources.createMutation.isPending} onSubmit={async payload => { await sources.createMutation.mutateAsync(payload); await accountsQuery.refetch(); }} />
       <ImportDialog
         open={importDialog.open}
         busy={importMutation.isPending}

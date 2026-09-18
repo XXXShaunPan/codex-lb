@@ -177,7 +177,7 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-2 text-xs">
+      {!account.accountId.startsWith("model-source:") && <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-2 text-xs">
         <div className="min-w-0">
           <p className="font-medium">{warmupStatus}</p>
           <p className="truncate text-[11px] text-muted-foreground">{warmupDetail}</p>
@@ -199,7 +199,7 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
           <Zap className="h-3 w-3" aria-hidden="true" />
           {account.limitWarmupEnabled ? t("common.states.on") : t("common.states.off")}
         </Button>
-      </div>
+      </div>}
 
       <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
         <p>
