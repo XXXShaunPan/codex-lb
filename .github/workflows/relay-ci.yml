@@ -27,19 +27,22 @@ jobs:
           uv run codex-lb-db check
       - run: >-
           uv run ruff check app/modules/virtual_accounts app/modules/provider_billing
-          app/modules/visitor_access app/modules/codex_config app/modules/provider_compatibility
+          app/modules/visitor_access app/modules/codex_config app/modules/provider_compatibility app/modules/relay_routing
           scripts/check_relay_source.py scripts/import_relay_visitors.py scripts/smoke_relay_http.py
       - run: >-
           uv run ty check app/modules/virtual_accounts app/modules/provider_billing
-          app/modules/visitor_access app/modules/codex_config app/modules/provider_compatibility
+          app/modules/visitor_access app/modules/codex_config app/modules/provider_compatibility app/modules/relay_routing
       - run: >-
           uv run pytest tests/unit/test_relay_provider_billing.py
           tests/integration/test_relay_native.py tests/unit/test_source_dispatch.py
-          tests/integration/test_model_source_dispatch.py -q
+          tests/integration/test_model_source_dispatch.py tests/unit/test_custom_weighted_routing.py
+          tests/integration/test_custom_routing_weights_api.py tests/integration/test_custom_routing_weight_migration.py
+          tests/unit/test_load_balancer.py tests/unit/test_load_balancer_concurrency.py -q
       - working-directory: frontend
         run: bun install --frozen-lockfile
       - working-directory: frontend
-        run: bun run test src/features/codex-config/commands.test.ts src/features/visitor-access/relay-access.test.tsx
+        run: bun run test src/features/codex-config/commands.test.ts src/features/visitor-access/relay-access.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
       - working-directory: frontend
         run: bun run build
-      - run: npx --yes @fission-ai/openspec validate --specs --strict
+      # Keep the CLI used to validate the upstream spec baseline reproducible.
+      - run: npx --yes @fission-ai/openspec@1.13.1 validate --specs --strict

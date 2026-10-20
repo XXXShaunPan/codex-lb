@@ -13,7 +13,14 @@ from app.db.migrate import _build_alembic_config
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     errors = []
-    for feature in ("virtual_accounts", "provider_billing", "visitor_access", "codex_config", "provider_compatibility"):
+    for feature in (
+        "virtual_accounts",
+        "provider_billing",
+        "visitor_access",
+        "codex_config",
+        "provider_compatibility",
+        "relay_routing",
+    ):
         for path in (root / "app/modules" / feature).glob("*.py"):
             source = path.read_text(encoding="utf-8")
             tree = ast.parse(source)
