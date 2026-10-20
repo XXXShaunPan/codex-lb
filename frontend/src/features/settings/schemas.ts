@@ -4,6 +4,7 @@ const RoutingStrategySchema = z.enum([
   "usage_weighted",
   "round_robin",
   "capacity_weighted",
+  "custom_weighted_quota",
   "sequential_drain",
   "reset_drain",
   "single_account",

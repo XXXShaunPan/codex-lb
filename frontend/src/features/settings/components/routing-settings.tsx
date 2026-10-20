@@ -27,6 +27,7 @@ import type {
 import { formatCompactAccountId } from "@/utils/account-identifiers";
 import { isSingleAccountRoutingSelectable } from "@/utils/account-status";
 import { cn } from "@/lib/utils";
+import { RoutingWeightSettings } from "@/features/relay-routing/weight-settings";
 
 const WARMUP_MODEL_MAX_LENGTH = 128;
 const LIMIT_WARMUP_MODEL_MAX_LENGTH = 128;
@@ -50,6 +51,7 @@ const WEEKLY_PACE_SMOOTHING_OPTIONS = [
 
 const STRATEGY_GUIDE_VALUES: Record<string, string> = {
   capacityWeighted: "capacity_weighted",
+  customWeightedQuota: "custom_weighted_quota",
   relativeAvailability: "relative_availability",
   usageWeighted: "usage_weighted",
   roundRobin: "round_robin",
@@ -614,6 +616,7 @@ export function RoutingSettings({
                 "capacityWeighted",
                 "relativeAvailability",
                 "usageWeighted",
+                "customWeightedQuota",
                 "roundRobin",
                 "fillFirst",
                 "sequentialDrain",
@@ -656,6 +659,7 @@ export function RoutingSettings({
               })}
             </div>
             <p className="text-xs text-muted-foreground">{t("settings.routing.strategy.safetyNote")}</p>
+            {settings.routingStrategy === "custom_weighted_quota" && <RoutingWeightSettings disabled={busy} />}
           </div>
 
           <div className="space-y-3 p-3">

@@ -25,6 +25,7 @@ type RoutingStrategy =
   | "usage_weighted"
   | "round_robin"
   | "capacity_weighted"
+  | "custom_weighted_quota"
   | "relative_availability"
   | "fill_first"
   | "single_account"
@@ -35,6 +36,7 @@ const ROUTING_STRATEGY_LABEL_KEYS: Record<RoutingStrategy, string> = {
   usage_weighted: "settings.routing.strategy.usageWeighted",
   round_robin: "settings.routing.strategy.roundRobin",
   capacity_weighted: "settings.routing.strategy.capacityWeighted",
+  custom_weighted_quota: "settings.routing.strategy.customWeightedQuota",
   relative_availability: "settings.routing.strategy.relativeAvailability",
   fill_first: "settings.routing.strategy.fillFirst",
   single_account: "settings.routing.strategy.singleAccount",

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ModelSourceEditDialog } from "@/features/model-sources/components/model-source-edit-dialog";
 import { useModelSources } from "@/features/model-sources/hooks/use-model-sources";
+import { RoutingWeightSettings } from "@/features/relay-routing/weight-settings";
 
 export function SourceAccountDetail({ sourceId }: { sourceId: string }) {
   const { t, i18n } = useTranslation();
@@ -18,6 +19,7 @@ export function SourceAccountDetail({ sourceId }: { sourceId: string }) {
     <h2 className="text-lg font-semibold">{source.name}</h2>
     <p className="text-sm text-muted-foreground">other · {zh ? "每周剩余 100% · 无 5 小时额度" : "100% weekly remaining · no 5-hour quota"}</p>
     <p className="break-all text-sm">{source.baseUrl}</p>
+    <RoutingWeightSettings key={sourceId} accountId={`model-source:${sourceId}`} disabled={busy} />
     <div className="flex flex-wrap gap-2">{source.models.map(model => <span key={model.id} className="rounded border px-2 py-1 text-xs">{model.model}</span>)}</div>
     <p className="text-sm text-muted-foreground">{zh ? "已收录模型按账号池价格结算，包含缓存与长上下文费率。" : "Catalog models use account-pool rates, including cached input and long context."}</p>
     {(updateMutation.error || deleteMutation.error) && <p role="alert" className="text-destructive">{updateMutation.error?.message ?? deleteMutation.error?.message}</p>}

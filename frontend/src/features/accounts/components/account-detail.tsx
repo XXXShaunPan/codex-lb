@@ -24,6 +24,7 @@ import type {
 } from "@/features/settings/schemas";
 import { formatCompactAccountId } from "@/utils/account-identifiers";
 import { formatSlug } from "@/utils/formatters";
+import { RoutingWeightSettings } from "@/features/relay-routing/weight-settings";
 
 export type AccountDetailProps = {
   account: AccountSummary | null;
@@ -172,6 +173,7 @@ export function AccountDetail({
         onReset={onResetUsage}
       />
       <AccountTokenInfo account={account} />
+      {!readOnly && <RoutingWeightSettings key={account.accountId} accountId={account.accountId} disabled={busy} />}
       <AccountActions
         account={account}
         busy={busy}

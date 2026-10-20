@@ -851,6 +851,9 @@ export const handlers = [
   http.get("/api/accounts", () => {
     return HttpResponse.json({ accounts: state.accounts });
   }),
+  http.get("/api/relay-routing/weights", () => HttpResponse.json({ accounts: state.accounts.map(account => ({
+    accountId: account.accountId, name: account.alias || account.email, kind: "account", weight: 1,
+  })) })),
 
   http.post("/api/accounts/import", async () => {
     const sequence = state.accounts.length + 1;
