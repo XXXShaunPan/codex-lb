@@ -73,6 +73,7 @@ RoutingStrategy = Literal[
     "sequential_drain",
     "reset_drain",
     "single_account",
+    "custom_weighted_quota",
 ]
 TrafficClass = Literal["foreground", "opportunistic"]
 UsageWeightedOrder = Literal["secondary_first", "primary_first"]
@@ -151,6 +152,10 @@ class AccountState:
     # neutral. The balancer derives it from the account's recent upstream
     # error rate. Deterministic strategies ignore it.
     selection_weight_multiplier: float = 1.0
+    routing_weight: float = 1.0
+    # Reported quota before inflight and token-lease pressure are added.
+    quota_used_percent: float | None = None
+    quota_secondary_used_percent: float | None = None
 
 
 @dataclass
@@ -550,6 +555,9 @@ def select_account(
     """
     current = now or time.time()
     available: list[AccountState] = []
+    custom_weighted = routing_strategy == "custom_weighted_quota"
+    if custom_weighted and recovery_probe_only:
+        return SelectionResult(None, None)
     in_error_backoff: list[AccountState] = []
     all_states = list(states)
     usage_exhaustion_state_list = list(usage_exhaustion_states) if usage_exhaustion_states is not None else all_states
@@ -572,6 +580,7 @@ def select_account(
             if state.reset_at and current >= state.reset_at:
                 state.status = AccountStatus.ACTIVE
                 state.used_percent = 0.0
+                state.quota_used_percent = 0.0
                 state.error_count = 0
                 state.reset_at = None
             elif not bypass_standard_quota:
@@ -581,6 +590,8 @@ def select_account(
                 state.status = AccountStatus.ACTIVE
                 state.used_percent = 0.0
                 state.secondary_used_percent = 0.0
+                state.quota_used_percent = 0.0
+                state.quota_secondary_used_percent = 0.0
                 state.reset_at = None
             elif not bypass_standard_quota:
                 continue
@@ -605,7 +616,7 @@ def select_account(
             state.last_error_at = None
         available.append(state)
 
-    if traffic_class == TRAFFIC_CLASS_OPPORTUNISTIC and available:
+    if traffic_class == TRAFFIC_CLASS_OPPORTUNISTIC and available and not custom_weighted:
         opportunistic_available, reason = _filter_opportunistic_candidates(available, current)
         if not opportunistic_available:
             return SelectionResult(None, f"opportunistic burn window closed: {reason}")
@@ -627,7 +638,11 @@ def select_account(
             and state.account_id not in in_error_backoff_ids
             for state in all_states
         )
-        if allow_backoff_fallback and (len(in_error_backoff) > 1 or (in_error_backoff and hard_blocked_exists)):
+        if (
+            not custom_weighted
+            and allow_backoff_fallback
+            and (len(in_error_backoff) > 1 or (in_error_backoff and hard_blocked_exists))
+        ):
 
             def _backoff_expires_at(s: AccountState) -> float:
                 backoff = min(300, 30 * (2 ** (s.error_count - ERROR_BACKOFF_THRESHOLD)))
@@ -680,6 +695,16 @@ def select_account(
                 wait_seconds = max(0.0, min(cooldowns) - current)
                 return SelectionResult(None, _format_retry_hint(wait_seconds))
             return SelectionResult(None, "No available accounts")
+
+    if custom_weighted:
+        from app.modules.relay_routing.selection import select_weighted_quota
+
+        selected = select_weighted_quota(available, deterministic=deterministic_probe)
+        return SelectionResult(
+            selected,
+            None if selected is not None else "No eligible account has positive weight and remaining quota",
+            error_code=None if selected is not None else "no_weighted_capacity",
+        )
 
     def _reset_first_sort_key(state: AccountState) -> tuple[int, float, float, float, float, str]:
         reset_bucket_days = _reset_preference_bucket(state, current, prefer_earlier_reset_window)

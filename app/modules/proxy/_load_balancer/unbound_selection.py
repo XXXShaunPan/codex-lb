@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Generic, Protocol, TypeVar
 
@@ -215,6 +215,10 @@ async def run_unbound_selection_path(
                 selection_resets_at = None
 
                 def _select_from(candidates: list[AccountState]) -> SelectionResult:
+                    if routing_strategy == "custom_weighted_quota" and required_account_id is not None:
+                        # An explicit response/file owner is already assigned.
+                        # Weight zero only withdraws it from new allocations.
+                        candidates = [replace(state, routing_weight=1.0) for state in candidates]
                     return _select_account_preferring_budget_safe(
                         candidates,
                         prefer_earlier_reset=prefer_earlier_reset_accounts,

@@ -84,7 +84,7 @@ class DashboardSettingsResponse(DashboardModel):
     auto_redeem_reset_credits_before_expiry: bool
     show_reset_credit_expiry_badge: bool
     routing_strategy: str = Field(
-        pattern=r"^(usage_weighted|round_robin|capacity_weighted|relative_availability|fill_first|sequential_drain|reset_drain|single_account)$"
+        pattern=r"^(usage_weighted|round_robin|capacity_weighted|relative_availability|fill_first|sequential_drain|reset_drain|single_account|custom_weighted_quota)$"
     )
     relative_availability_power: float = Field(gt=0.0)
     relative_availability_top_k: int = Field(ge=1, le=20)
@@ -225,7 +225,7 @@ class DashboardSettingsUpdateRequest(DashboardModel):
     show_reset_credit_expiry_badge: bool | None = None
     routing_strategy: str | None = Field(
         default=None,
-        pattern=r"^(usage_weighted|round_robin|capacity_weighted|relative_availability|fill_first|sequential_drain|reset_drain|single_account)$",
+        pattern=r"^(usage_weighted|round_robin|capacity_weighted|relative_availability|fill_first|sequential_drain|reset_drain|single_account|custom_weighted_quota)$",
     )
     relative_availability_power: float | None = Field(default=None, gt=0.0)
     relative_availability_top_k: int | None = Field(default=None, ge=1, le=20)

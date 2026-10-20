@@ -369,7 +369,7 @@ from app.modules.request_logs.repository import RequestLogsRepository
 from app.modules.usage.mappers import usage_history_to_window_row
 from app.modules.usage.repository import AdditionalUsageRepository, UsageRepository
 from app.modules.usage.updater import UsageUpdater
-from app.modules.virtual_accounts.routing import unified_audio, unified_chat, with_route_affinity
+from app.modules.virtual_accounts.routing import unified_audio, unified_chat, unified_embeddings, with_route_affinity
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -4915,6 +4915,7 @@ async def _disabled_model_source_denial(
     return _logged_error_json_response(request, 503, error, headers=headers)
 
 
+@unified_embeddings
 async def _select_embeddings_model_source(model: str, api_key: ApiKeyData | None) -> ModelSource | None:
     assigned_source_ids = _allowed_source_ids_for_api_key(api_key)
     exact_allowed_models = _exact_source_allowed_models_for_api_key(api_key)

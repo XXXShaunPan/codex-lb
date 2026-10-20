@@ -1038,6 +1038,9 @@ def create_app() -> FastAPI:
     from app.modules.provider_billing.api import router as provider_billing_router
 
     app.include_router(provider_billing_router)
+    from app.modules.relay_routing.api import router as routing_weights_router
+
+    app.include_router(routing_weights_router)
     app.include_router(model_sources_api.router)
     app.include_router(health_api.router)
 

@@ -2324,6 +2324,8 @@ def _partial_output_proxy_error_event_block(
 
 def _routing_strategy(settings: DashboardSettings) -> RoutingStrategy:
     value = getattr(settings, "routing_strategy", None) or "capacity_weighted"
+    if value == "custom_weighted_quota":
+        return "custom_weighted_quota"
     if value == "single_account":
         return "single_account"
     if value == "sequential_drain":

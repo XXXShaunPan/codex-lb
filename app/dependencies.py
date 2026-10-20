@@ -37,6 +37,8 @@ from app.modules.proxy.repo_bundle import ProxyRepositories
 from app.modules.proxy.service import ProxyService
 from app.modules.proxy.sticky_repository import StickySessionsRepository
 from app.modules.quota_planner.repository import QuotaPlannerRepository
+from app.modules.relay_routing.repository import RoutingWeightsRepository
+from app.modules.relay_routing.service import RoutingWeightsService
 from app.modules.reports.cache import ReportsCaches
 from app.modules.reports.repository import ReportsRepository
 from app.modules.reports.service import ReportsService
@@ -47,6 +49,18 @@ from app.modules.settings.service import SettingsService
 from app.modules.sticky_sessions.service import StickySessionsService
 from app.modules.usage.repository import AdditionalUsageRepository, UsageRepository
 from app.modules.usage.service import UsageService
+
+
+@dataclass(slots=True)
+class RoutingWeightsContext:
+    session: AsyncSession
+    repository: RoutingWeightsRepository
+    service: RoutingWeightsService
+
+
+def get_routing_weights_context(session: AsyncSession = Depends(get_session)) -> RoutingWeightsContext:
+    repository = RoutingWeightsRepository(session)
+    return RoutingWeightsContext(session, repository, RoutingWeightsService(repository))
 
 
 @dataclass(slots=True)

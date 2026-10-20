@@ -1491,7 +1491,8 @@ async def _select_with_stickiness(
                     StickySessionKind.STICKY_THREAD,
                     StickySessionKind.CODEX_SESSION,
                 )
-                and routing_strategy not in ("sequential_drain", "reset_drain", "single_account")
+                and routing_strategy
+                not in ("sequential_drain", "reset_drain", "single_account", "custom_weighted_quota")
                 and pinned.status != AccountStatus.RATE_LIMITED
                 and _state_above_sticky_budget_threshold(
                     pinned,
@@ -1506,7 +1507,9 @@ async def _select_with_stickiness(
                 and pinned.reset_at - now >= 600  # 10 minutes
             )
 
-            burn_first_reallocate = pinned.routing_policy != ROUTING_POLICY_BURN_FIRST
+            burn_first_reallocate = (
+                routing_strategy != "custom_weighted_quota" and pinned.routing_policy != ROUTING_POLICY_BURN_FIRST
+            )
             if burn_first_reallocate:
                 burn_first_candidates = [state for state in states if state.routing_policy == ROUTING_POLICY_BURN_FIRST]
                 if burn_first_candidates:
@@ -1566,7 +1569,7 @@ async def _select_with_stickiness(
                 reallocate_sticky = True
             elif not ((budget_pressured or rate_limit_far_away) and burn_first_reallocate):
                 pinned_result = select_account(
-                    [pinned],
+                    [replace(pinned, routing_weight=1.0) if routing_strategy == "custom_weighted_quota" else pinned],
                     prefer_earlier_reset=prefer_earlier_reset_accounts,
                     prefer_earlier_reset_window=prefer_earlier_reset_window,
                     routing_strategy=routing_strategy,
@@ -1824,7 +1827,7 @@ def _probing_result_requires_recovery_reservation(
     traffic_class: TrafficClass,
     now: float,
 ) -> bool:
-    if routing_strategy in ("sequential_drain", "reset_drain", "single_account"):
+    if routing_strategy in ("sequential_drain", "reset_drain", "single_account", "custom_weighted_quota"):
         return False
     if result_account is None or result_account.health_tier != HEALTH_TIER_PROBING:
         return False
@@ -1957,6 +1960,18 @@ def _select_account_preferring_budget_safe(
     usage_exhaustion_states: Iterable[AccountState] | None = None,
 ) -> SelectionResult:
     state_list = list(states)
+    if routing_strategy == "custom_weighted_quota":
+        return select_account(
+            state_list,
+            routing_strategy=routing_strategy,
+            prefer_earlier_reset=False,
+            allow_backoff_fallback=False,
+            deterministic_probe=deterministic_probe,
+            traffic_class=traffic_class,
+            ignore_standard_quota=ignore_standard_quota,
+            allow_usage_exhaustion_error=allow_usage_exhaustion_error,
+            usage_exhaustion_states=usage_exhaustion_states,
+        )
     if routing_strategy not in ("sequential_drain", "reset_drain", "single_account"):
         # This pass must precede budget-safe and routing-policy shortcuts below;
         # otherwise a healthy preferred account can starve PROBING indefinitely.

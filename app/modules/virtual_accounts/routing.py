@@ -57,6 +57,8 @@ async def _eligible_sources(
             continue
         if route == "audio" and not source.supports_audio_transcriptions:
             continue
+        if route == "embeddings" and not source.supports_embeddings:
+            continue
         for candidate in candidates:
             if exact_allowed_models is not None and candidate not in exact_allowed_models:
                 continue
@@ -88,6 +90,7 @@ async def _choose_virtual_candidate(
     model: str,
     api_key: Any | None,
     sources: Sequence[tuple[Any, str]],
+    include_accounts: bool = True,
 ) -> tuple[Any, str] | None:
     """Return a selected source, or None when the shared strategy chose an account."""
 
@@ -124,6 +127,8 @@ async def _choose_virtual_candidate(
     scoped_account_ids = (
         set(api_key.assigned_account_ids) if api_key is not None and api_key.account_assignment_scope_enabled else None
     )
+    if not include_accounts:
+        scoped_account_ids = set()
     selection_inputs = await load_balancer._load_selection_inputs(
         model=model,
         service_tier=None,
@@ -158,6 +163,7 @@ async def _choose_virtual_candidate(
                 capacity_credits=capacity,
                 last_selected_at=_source_last_selected.get(source.id),
                 routing_policy="normal",
+                routing_weight=source.routing_weight if source.routing_weight is not None else 1.0,
             )
         )
 
@@ -178,6 +184,8 @@ async def _choose_virtual_candidate(
         traffic_class=traffic_class,
     )
     if selection.account is None:
+        if settings.routing_strategy == "custom_weighted_quota":
+            return None
         fallback = sources[0] if not real_states else None
         if affinity_key is not None and fallback is not None:
             _route_affinity[affinity_key] = (time.monotonic(), fallback[0].id)
@@ -263,6 +271,25 @@ def unified_audio(native):
         return selected[0] if selected is not None else None
 
     return functools.wraps(native)(select_audio_model_source)
+
+
+def unified_embeddings(native):
+    @functools.wraps(native)
+    async def select_embeddings_model_source(model: str, api_key: Any | None):
+        from app.core.config.settings_cache import get_settings_cache
+
+        settings = await get_settings_cache().get()
+        if settings.routing_strategy != "custom_weighted_quota":
+            return await native(model, api_key)
+        sources = await _eligible_sources(route="embeddings", model=model, api_key=api_key)
+        if not sources:
+            return None
+        selected = await _choose_virtual_candidate(
+            model=model, api_key=api_key, sources=sources, include_accounts=False
+        )
+        return selected[0] if selected is not None else None
+
+    return select_embeddings_model_source
 
 
 def with_route_affinity(native):

@@ -133,6 +133,7 @@ class Account(Base):
     )
 
     access_token_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    routing_weight: Mapped[float] = mapped_column(Float, default=1.0, server_default=text("1"), nullable=False)
     refresh_token_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     id_token_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
@@ -1374,6 +1375,7 @@ class ModelSource(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    routing_weight: Mapped[float] = mapped_column(Float, default=1.0, server_default=text("1"), nullable=False)
     kind: Mapped[str] = mapped_column(
         String,
         default="openai_compatible",
