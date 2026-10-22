@@ -37,11 +37,12 @@ jobs:
           tests/integration/test_relay_native.py tests/unit/test_source_dispatch.py
           tests/integration/test_model_source_dispatch.py tests/unit/test_custom_weighted_routing.py
           tests/integration/test_custom_routing_weights_api.py tests/integration/test_custom_routing_weight_migration.py
+          tests/unit/test_priority_routing.py tests/integration/test_priority_routing.py tests/integration/test_priority_routing_migration.py
           tests/unit/test_load_balancer.py tests/unit/test_load_balancer_concurrency.py -q
       - working-directory: frontend
         run: bun install --frozen-lockfile
       - working-directory: frontend
-        run: bun run test src/features/codex-config/commands.test.ts src/features/visitor-access/relay-access.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
+        run: bun run test src/features/codex-config/commands.test.ts src/features/visitor-access/relay-access.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/relay-routing/priority-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
       - working-directory: frontend
         run: bun run build
       # Keep the CLI used to validate the upstream spec baseline reproducible.
