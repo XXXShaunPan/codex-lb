@@ -14,9 +14,27 @@ zero. The virtual-pool first-source fallback is disabled for this strategy.
 Source-only embeddings also use the same weights, with subscription accounts
 excluded from their candidate pool.
 
-Validation covers 673 backend cases across routing, concurrency, source dispatch,
-visitor isolation, billing and the new API/migration. Fifty frontend routing
-tests and the production build passed. Migration tests start from the prior
+The priority extension stores full plan/account rules in `relay_routing_rules`
+and persistent per-account quota bands in `relay_routing_quota_bands`. Lower
+numbers win; default Plus is 10/30 and all others 20/20. Only the best eligible
+group reaches the random draw. Account overrides replace the entire plan rule;
+removing the override restores inheritance. Band decisions happen outside the
+balancer runtime lock, using normalized reported windows and transaction-owned
+DB sessions. SQLite writer serialization / PostgreSQL row locks protect band
+transitions. Older observations cannot reverse newer transitions. A changed
+threshold/basis fingerprint re-evaluates the band under the new rule.
+
+Unknown requested quota demotes ordinary accounts. No known applicable quota
+means no new allocation; a confirmed absent short window is ignored in minimum
+mode. Source placeholders are explicitly labeled, including in account details.
+Mixed source/real routing removes real accounts at their hard concurrency cap
+before choosing a priority group. Already-owned requests bypass new-allocation
+policy, but retain hard security, capability and availability checks.
+
+Validation covers routing, concurrency, source dispatch, visitor isolation,
+billing, priority rules, persistent hysteresis, stale observations, and the new
+API/migrations. Fifty-nine frontend cases and the production build passed.
+Migration tests start from the prior
 head, preserve existing rows, verify default weights, repeat upgrade, downgrade
 and upgrade again. Non-finite JSON numbers, boolean values, deleted accounts
 and visitor access are rejected.
