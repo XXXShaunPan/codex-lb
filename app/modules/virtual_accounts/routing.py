@@ -6,7 +6,7 @@ import functools
 import hashlib
 import statistics
 import time
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 from app.modules.virtual_accounts.identity import (
     _DEFAULT_SOURCE_CAPACITY_CREDITS,
@@ -91,6 +91,7 @@ async def _choose_virtual_candidate(
     api_key: Any | None,
     sources: Sequence[tuple[Any, str]],
     include_accounts: bool = True,
+    lease_kind: Literal["response_create", "stream"] | None = None,
 ) -> tuple[Any, str] | None:
     """Return a selected source, or None when the shared strategy chose an account."""
 
@@ -146,6 +147,15 @@ async def _choose_virtual_candidate(
             routing_policy_override=selection_inputs.routing_policy_override,
             ignore_standard_quota_account_ids=selection_inputs.ignore_standard_quota_account_ids,
         )
+        if settings.routing_strategy == "custom_weighted_quota" and lease_kind is not None:
+            from app.modules.proxy._load_balancer.sticky_selection import _filter_states_for_account_caps
+
+            real_states = _filter_states_for_account_caps(
+                real_states,
+                lease_kind=lease_kind,
+                caps=lb_module.effective_account_concurrency_caps(settings),
+                stream_reserve_slots=0,
+            )
 
     capacity = _source_capacity(real_states)
     source_by_virtual_id: dict[str, tuple[Any, str]] = {}
@@ -170,6 +180,18 @@ async def _choose_virtual_candidate(
     all_states = [*real_states, *virtual_states]
     if not all_states:
         return None
+    if settings.routing_strategy == "custom_weighted_quota":
+        from app.modules.relay_routing.runtime import apply_priority_decisions, load_priority_decisions
+
+        decisions = await load_priority_decisions(
+            accounts=selection_inputs.accounts,
+            latest_primary=selection_inputs.latest_primary,
+            latest_secondary=selection_inputs.latest_secondary,
+            latest_monthly=selection_inputs.latest_monthly,
+            now=time.time(),
+            sources=[source for source, _ in sources],
+        )
+        apply_priority_decisions(all_states, decisions)
     traffic_class = getattr(api_key, "traffic_class", "foreground") if api_key is not None else "foreground"
     selection = _select_account_preferring_budget_safe(
         all_states,
@@ -228,7 +250,12 @@ def unified_responses(native):
         )
         if not sources:
             return None
-        return await _choose_virtual_candidate(model=model, api_key=api_key, sources=sources)
+        return await _choose_virtual_candidate(
+            model=model,
+            api_key=api_key,
+            sources=sources,
+            lease_kind="stream" if require_streaming else "response_create",
+        )
 
     return functools.wraps(native)(select_responses_model_source)
 
@@ -256,7 +283,12 @@ def unified_chat(native):
         )
         if not sources:
             return None
-        return await _choose_virtual_candidate(model=model, api_key=api_key, sources=sources)
+        return await _choose_virtual_candidate(
+            model=model,
+            api_key=api_key,
+            sources=sources,
+            lease_kind="stream" if require_streaming else "response_create",
+        )
 
     return functools.wraps(native)(select_chat_model_source)
 

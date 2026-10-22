@@ -156,6 +156,10 @@ class AccountState:
     # Reported quota before inflight and token-lease pressure are added.
     quota_used_percent: float | None = None
     quota_secondary_used_percent: float | None = None
+    routing_priority: int | None = None
+    routing_remaining_fraction: float | None = None
+    routing_allow_new: bool = True
+    routing_continuity_owner: bool = False
 
 
 @dataclass

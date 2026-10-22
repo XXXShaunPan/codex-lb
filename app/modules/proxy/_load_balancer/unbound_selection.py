@@ -218,7 +218,7 @@ async def run_unbound_selection_path(
                     if routing_strategy == "custom_weighted_quota" and required_account_id is not None:
                         # An explicit response/file owner is already assigned.
                         # Weight zero only withdraws it from new allocations.
-                        candidates = [replace(state, routing_weight=1.0) for state in candidates]
+                        candidates = [replace(state, routing_continuity_owner=True) for state in candidates]
                     return _select_account_preferring_budget_safe(
                         candidates,
                         prefer_earlier_reset=prefer_earlier_reset_accounts,

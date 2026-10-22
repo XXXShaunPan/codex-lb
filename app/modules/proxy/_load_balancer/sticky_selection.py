@@ -158,6 +158,11 @@ def prepare_selection_states(
         ),
         model=model,
     )
+    decisions = getattr(selection_inputs, "custom_routing_decisions", None)
+    if decisions is not None:
+        from app.modules.relay_routing.runtime import apply_priority_decisions
+
+        apply_priority_decisions(states, decisions)
     if required_account_id is None:
         return states, account_map
     return (
@@ -1569,7 +1574,11 @@ async def _select_with_stickiness(
                 reallocate_sticky = True
             elif not ((budget_pressured or rate_limit_far_away) and burn_first_reallocate):
                 pinned_result = select_account(
-                    [replace(pinned, routing_weight=1.0) if routing_strategy == "custom_weighted_quota" else pinned],
+                    [
+                        replace(pinned, routing_continuity_owner=True)
+                        if routing_strategy == "custom_weighted_quota"
+                        else pinned
+                    ],
                     prefer_earlier_reset=prefer_earlier_reset_accounts,
                     prefer_earlier_reset_window=prefer_earlier_reset_window,
                     routing_strategy=routing_strategy,

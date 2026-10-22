@@ -54,7 +54,7 @@ def account(name="a", **kwargs):
         (0, 0, 0, 0),
         (2, 100, 0, 0),
         (2, 0, 100, 0),
-        (1, None, None, 1),
+        (1, None, None, 0),
         (4, -5, 75, 1),
         (1, float("nan"), 0, 0),
     ],
@@ -72,7 +72,7 @@ def test_ranking_factors_do_not_change_draw_weights(monkeypatch):
         routing_weight=2,
         used_percent=50,
         secondary_used_percent=0,
-        plan_type="free",
+        plan_type="prolite",
         capacity_credits=1,
         routing_policy="preserve",
         health_tier=2,
@@ -146,7 +146,7 @@ def test_reported_quota_is_used_instead_of_synthetic_pressure():
 )
 def test_unavailable_high_weight_cannot_win(blocked):
     unavailable = replace(account("blocked", routing_weight=1_000_000), **blocked)
-    available = account("available", routing_weight=1)
+    available = account("available", routing_weight=1, used_percent=0, secondary_used_percent=0)
     assert (
         select_account([unavailable, available], routing_strategy="custom_weighted_quota", now=1000).account
         is available
@@ -177,7 +177,7 @@ def test_state_builder_retains_operator_weight_and_reported_usage():
 
 
 @pytest.mark.asyncio
-async def test_virtual_zero_weight_never_uses_first_source_fallback(monkeypatch):
+async def test_virtual_zero_weight_never_uses_first_source_fallback(monkeypatch, async_client):
     from app.dependencies import get_proxy_service_for_app
     from app.main import app
     from app.modules.virtual_accounts.routing import _choose_virtual_candidate

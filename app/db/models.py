@@ -2604,4 +2604,5 @@ Index(
 
 # Native relay tables share the upstream metadata and migration lifecycle.
 from app.modules.provider_billing import models as _provider_billing_models  # noqa: E402,F401
+from app.modules.relay_routing import models as _relay_routing_models  # noqa: E402,F401
 from app.modules.visitor_access import models as _visitor_access_models  # noqa: E402,F401

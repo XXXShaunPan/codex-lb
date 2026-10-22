@@ -17,6 +17,7 @@ class RoutingWeightData:
     name: str
     kind: Literal["account", "model_source"]
     weight: float
+    plan_type: str
 
 
 class RoutingWeightsRepository:
@@ -26,7 +27,7 @@ class RoutingWeightsRepository:
     async def list_weights(self) -> list[RoutingWeightData]:
         accounts = (
             await self._session.execute(
-                select(Account.id, Account.alias, Account.email, Account.routing_weight)
+                select(Account.id, Account.alias, Account.email, Account.routing_weight, Account.plan_type)
                 .where(Account.delete_requested_at.is_(None))
                 .order_by(Account.id)
             )
@@ -37,9 +38,10 @@ class RoutingWeightsRepository:
             )
         ).all()
         return [
-            RoutingWeightData(row.id, row.alias or row.email, "account", row.routing_weight) for row in accounts
+            RoutingWeightData(row.id, row.alias or row.email, "account", row.routing_weight, row.plan_type.lower())
+            for row in accounts
         ] + [
-            RoutingWeightData(virtual_account_id(row.id), row.name, "model_source", row.routing_weight)
+            RoutingWeightData(virtual_account_id(row.id), row.name, "model_source", row.routing_weight, "other")
             for row in sources
         ]
 
