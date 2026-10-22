@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Highest eligible priority group first
-New custom-strategy allocations SHALL use only the nonempty eligible group
+New allocations using the custom strategy SHALL use only the nonempty eligible group
 with the smallest numeric priority. Within that group the draw SHALL be
 proportional to weight times reported remaining quota.
 

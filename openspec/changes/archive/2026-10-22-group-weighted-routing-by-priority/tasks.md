@@ -4,4 +4,4 @@
 - [x] Keep continuity owners independent of new-allocation rules.
 - [x] Expose all rules, inheritance and placeholder/unknown semantics to administrators.
 - [x] Verify API permissions, thresholds, group isolation, concurrency and migration.
-- [ ] Build, validate, publish and provide manual activation without production changes.
+- [x] Build, validate, publish and provide manual activation without production changes.

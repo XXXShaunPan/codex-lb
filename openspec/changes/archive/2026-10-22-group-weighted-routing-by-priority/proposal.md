@@ -1,5 +1,7 @@
 # Priority groups for custom weighted routing
 
+## Scope
+
 Update the opt-in custom strategy to choose the lowest numbered eligible
 priority group before drawing by weight and reported remaining quota.
 Administrators manage plan defaults and full per-account overrides. Defaults:
