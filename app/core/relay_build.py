@@ -2,7 +2,7 @@
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-RELAY_VERSION = "custom-v1.25.0-beta.7.3"
+RELAY_VERSION = "custom-v1.25.0-beta.7.4"
 
 
 class RelayBuildMiddleware:

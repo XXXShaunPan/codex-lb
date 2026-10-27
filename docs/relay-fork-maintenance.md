@@ -10,10 +10,14 @@ Normative requirements: [relay fork specification](../openspec/specs/relay-fork/
 - `integration/<release>`: isolated upgrade branch.
 
 The native feature modules are `virtual_accounts`, `provider_billing`,
-`visitor_access`, `codex_config`, and `provider_compatibility`. Definition-time
+`visitor_access`, `codex_config`, `image_routing`, `relay_routing`, and `provider_compatibility`. Definition-time
 adapters are explicitly declared at upstream integration points. No startup
 code rewrites upstream methods, FastAPI route dependants or frontend assets.
 Frontend controls are React components compiled into `app/static`.
+
+Reusable Key export and independent image host/source routing are described in
+[Codex configuration and image routing](relay-config-images.md). Saved Key tokens
+are plaintext by operator choice; treat database backups as live credentials.
 
 The Windows service must use the custom checkout as its working directory.
 Remove the legacy injection `PYTHONPATH` and feature-enable variables. Keep

@@ -20,6 +20,7 @@ def main() -> int:
         "codex_config",
         "provider_compatibility",
         "relay_routing",
+        "image_routing",
     ):
         for path in (root / "app/modules" / feature).glob("*.py"):
             source = path.read_text(encoding="utf-8")
