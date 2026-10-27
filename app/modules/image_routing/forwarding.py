@@ -16,6 +16,7 @@ from app.core.clock import REAL_SCHEDULER
 from app.core.errors import openai_error
 from app.core.openai.images import V1ImagesEditsForm, V1ImagesGenerationsRequest
 from app.core.types import JsonValue
+from app.core.utils.json_guards import is_json_mapping
 from app.core.utils.shared_future import _await_cleanup_deferring_cancellation
 from app.core.utils.sse import format_sse_event, parse_sse_data_json
 from app.db.models import ModelSource
@@ -123,7 +124,15 @@ async def _open(
             handed_off = True
             return None
         data = await transport._response_json(response)
-        if data is None or not isinstance(data.get("data"), list) or not data["data"]:
+        items = data.get("data") if data is not None else None
+        if (
+            not isinstance(items, list)
+            or not items
+            or not all(
+                is_json_mapping(item) and isinstance(item.get("b64_json"), str) and bool(item["b64_json"])
+                for item in items
+            )
+        ):
             raise transport._invalid_upstream_response_error(response.status)
         return data
     except (aiohttp.ClientError, TimeoutError) as exc:
@@ -156,7 +165,11 @@ async def _stream(owner: SourceDispatch) -> AsyncIterator[str]:
                 )
             if kind in {"image_generation.completed", "image_edit.completed"}:
                 usage = transport._usage_from_responses_payload(event)
-                if not event.get("b64_json") or (usage is None and _usage_required(owner)):
+                if (
+                    not isinstance(event.get("b64_json"), str)
+                    or not event["b64_json"]
+                    or (usage is None and _usage_required(owner))
+                ):
                     await owner.finish(
                         status="error",
                         error_code="usage_unavailable",

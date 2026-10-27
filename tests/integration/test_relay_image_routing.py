@@ -224,3 +224,17 @@ async def test_source_image_missing_usage_fails_closed_and_unassigned_source_is_
         json={"model": "gpt-image-2", "prompt": "test"},
     )
     assert result.status_code == 503 and len(calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("items", [[None], [{}], [{"b64_json": ""}]])
+async def test_malformed_source_image_is_not_charged(async_client, source_upstream, items):
+    async def handler(request):
+        return web.json_response({"data": items, "usage": USAGE})
+
+    source, key, headers = await create_source_key(async_client, await source_upstream(handler))
+    result = await async_client.post(
+        "/v1/images/generations", headers=headers, json={"model": "gpt-image-2", "prompt": "test"}
+    )
+    assert result.status_code == 502
+    await assert_settled(source, key, status="error", charged=False)
