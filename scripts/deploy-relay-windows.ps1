@@ -32,8 +32,10 @@ try {
     if (Test-Path -LiteralPath $injection) {
         Copy-Item -LiteralPath $injection -Destination (Join-Path $backup 'legacy-injection') -Recurse
     }
-    & $wrapper stop
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to stop the service.' }
+    if ((Get-Service -Name $ServiceName).Status -ne 'Stopped') {
+        & $wrapper stop
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to stop the service.' }
+    }
     $deadline = [DateTime]::UtcNow.AddSeconds(40)
     while ((Get-Service -Name $ServiceName).Status -ne 'Stopped') {
         if ([DateTime]::UtcNow -gt $deadline) { throw 'Service did not stop; no database changes applied.' }
