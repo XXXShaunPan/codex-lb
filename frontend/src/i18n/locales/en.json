@@ -193,7 +193,7 @@
   "apiKeys.accountSelect.selected_other": "{{count}} accounts selected",
   "apiKeys.authToggle.description": "Require API keys for downstream requests.",
   "apiKeys.authToggle.title": "API key authentication",
-  "apiKeys.createdDialog.description": "Copy this key now. It will not be shown again after closing this dialog.",
+  "apiKeys.createdDialog.description": "Keep this key private. Configure Codex can reuse the saved token later; resetting invalidates the old key.",
   "apiKeys.createdDialog.keyLabel": "API key",
   "apiKeys.createdDialog.title": "API key created",
   "apiKeys.createDialog.description": "Configure access, limits, and routing for a new key.",

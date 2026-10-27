@@ -193,7 +193,7 @@
   "apiKeys.accountSelect.selected_other": "已选择 {{count}} 个账户",
   "apiKeys.authToggle.description": "下游请求需要 API Key。",
   "apiKeys.authToggle.title": "API Key 认证",
-  "apiKeys.createdDialog.description": "请立即复制该 key，之后不会再次显示。",
+  "apiKeys.createdDialog.description": "请妥善保存该 Key。之后可通过“一键配置到 Codex”安全复用；重置会使旧 Key 失效。",
   "apiKeys.createdDialog.keyLabel": "API Key",
   "apiKeys.createdDialog.title": "API Key 已创建",
   "apiKeys.createDialog.description": "为新 key 配置访问、限制和路由。",

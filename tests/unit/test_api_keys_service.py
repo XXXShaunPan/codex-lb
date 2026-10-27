@@ -67,7 +67,11 @@ def test_is_sqlite_database_locked_matches_transient_lock_messages(message: str)
 
 
 class _FakeApiKeysRepository(ApiKeysRepositoryProtocol):
+    async def save_token(self, key_id: str, token: str) -> None:
+        self.tokens[key_id] = token
+
     def __init__(self) -> None:
+        self.tokens: dict[str, str] = {}
         self.rows: dict[str, ApiKey] = {}
         self._limits: dict[str, list[ApiKeyLimit]] = {}
         self._account_assignments: dict[str, list[ApiKeyAccountAssignment]] = {}

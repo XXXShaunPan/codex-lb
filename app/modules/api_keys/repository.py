@@ -430,6 +430,16 @@ class ApiKeysRepository:
         await self._session.commit()
         return True
 
+    async def save_token(self, key_id: str, token: str) -> None:
+        from app.modules.codex_config.models import CodexApiToken
+
+        row = await self._session.get(CodexApiToken, key_id)
+        if row is None:
+            self._session.add(CodexApiToken(api_key_id=key_id, token=token, updated_at=utcnow()))
+        else:
+            row.token = token
+            row.updated_at = utcnow()
+
     async def commit(self) -> None:
         await self._session.commit()
 

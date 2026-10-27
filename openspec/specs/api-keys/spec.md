@@ -6,7 +6,7 @@ Define API key lifecycle, enforcement, accounting, and dashboard management cont
 ## Requirements
 ### Requirement: API Key creation
 
-The system SHALL allow the admin to create API keys via `POST /api/api-keys` with a `name` (required), `allowedModels` (optional list), `weeklyTokenLimit` (optional integer), `expiresAt` (optional ISO 8601 datetime), `assignedAccountIds` (optional list), and `usageSections` (optional comma-separated string, defaults to `"upstream_limits,account_pool_usage"`). The system MUST generate a key in the format `sk-clb-{48 hex chars}`, store only the `sha256` hash in the database, and return the plain key exactly once in the creation response. The system MUST accept timezone-aware ISO 8601 datetimes for `expiresAt`, normalize them to UTC naive for persistence, and return the expiration as UTC in API responses.
+The system SHALL allow the admin to create API keys via `POST /api/api-keys` with a `name` (required), `allowedModels` (optional list), `weeklyTokenLimit` (optional integer), `expiresAt` (optional ISO 8601 datetime), `assignedAccountIds` (optional list), and `usageSections` (optional comma-separated string, defaults to `"upstream_limits,account_pool_usage"`). The system MUST generate a key in the format `sk-clb-{48 hex chars}`, store the `sha256` authentication hash and a recoverable token in the same database transaction, and return the plain key in the creation response. Subsequent token export SHALL be limited to the scoped no-store configuration endpoint described in relay-config-images; general key reads MUST omit the token. The system MUST accept timezone-aware ISO 8601 datetimes for `expiresAt`, normalize them to UTC naive for persistence, and return the expiration as UTC in API responses.
 
 When `assignedAccountIds` is omitted or empty, the created key SHALL remain unscoped and apply to all accounts. When `assignedAccountIds` is provided with one or more valid account IDs, the created key SHALL enable account-assignment scope and persist those assignments.
 
@@ -32,7 +32,7 @@ When `assignedAccountIds` is omitted or empty, the created key SHALL remain unsc
 - **WHEN** admin submits `POST /api/api-keys` with a valid payload
 - **THEN** the response contains a key matching `sk-clb-[0-9a-f]{48}`
 - **AND** the full plain key is returned exactly once
-- **AND** the system never returns the plain key on subsequent reads
+- **AND** general key reads omit the plain key; only authorized configuration export may return the saved token
 
 #### Scenario: Create key with timezone-aware expiration
 
@@ -122,7 +122,7 @@ The system SHALL allow deleting an API key via `DELETE /api/api-keys/{id}`. Dele
 
 ### Requirement: API Key regeneration
 
-The system SHALL allow regenerating an API key via `POST /api/api-keys/{id}/regenerate`. This MUST generate a new key matching `sk-clb-[0-9a-f]{48}` with a new hash and prefix while preserving all other properties (name, models, limits, expiration). The new plain key MUST be returned exactly once.
+The system SHALL allow regenerating an API key via `POST /api/api-keys/{id}/regenerate`. This MUST generate a new key matching `sk-clb-[0-9a-f]{48}` with a new hash and prefix while preserving all other properties (name, models, limits, expiration). The new plain key MUST be returned in the regeneration response and replace the recoverable token in the same transaction as the authentication hash. Authorized configuration export SHALL subsequently reuse the new token, never the old token.
 
 #### Scenario: Regenerate key
 
@@ -323,7 +323,7 @@ authenticated key.
 
 ### Requirement: Frontend API Key management
 
-The SPA settings page SHALL include an API Key management section with: a toggle for `apiKeyAuthEnabled`, a key list table showing prefix/name/models/limit/usage/expiry/status, a create dialog (name, model selection, assigned-account selection, usage sections multi-select, weekly limit, expiry date), and key actions (edit, delete, regenerate). On key creation, the SPA MUST display the plain key in a copy-able dialog with a warning that it will not be shown again, and the copy action MUST remain functional in secure and non-secure contexts.
+The SPA settings page SHALL include an API Key management section with: a toggle for `apiKeyAuthEnabled`, a key list table showing prefix/name/models/limit/usage/expiry/status, a create dialog (name, model selection, assigned-account selection, usage sections multi-select, weekly limit, expiry date), and key actions (edit, delete, regenerate). On key creation, the SPA MUST display the plain key in a copy-able dialog with a warning to protect the token and that configuration export can reuse it, and the copy action MUST remain functional in secure and non-secure contexts.
 
 The create and edit dialogs SHALL expose an `Apply to codex /model` checkbox directly below `Allowed models`. The checkbox SHALL default to unchecked for new keys and SHALL edit the stored API key value for existing keys.
 

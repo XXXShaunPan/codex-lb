@@ -51,7 +51,9 @@ def create_with_unified_assignments(native):
 def update_with_unified_assignments(native):
     native_update = native
 
-    async def update_key(self, key_id, payload):
+    async def update_key(self, key_id, payload, *, _retry_attempt=0):
+        if _retry_attempt:
+            return await native_update(self, key_id, payload, _retry_attempt=_retry_attempt)
         assignment_changed = bool(payload.assigned_account_ids_set or payload.assigned_source_ids_set)
         unified_scope: bool | None = None
         translated = payload

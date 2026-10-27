@@ -399,7 +399,7 @@ class VisitorPortalMiddleware:
             scope = {**scope, "path": canonical}
         request = Request(scope, receive=receive)
         path = request.url.path.rstrip("/") or "/"
-        if path == _CODEX_CONFIG_REGENERATE_PATH:
+        if path in {_CODEX_CONFIG_REGENERATE_PATH, "/api/codex-config/generate", "/api/codex-config/status"}:
             from app.modules.codex_config.service import _codex_config_endpoint
 
             response = await _codex_config_endpoint(request)

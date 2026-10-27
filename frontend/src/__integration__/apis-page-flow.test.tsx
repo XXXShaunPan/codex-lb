@@ -48,7 +48,7 @@ describe("apis page integration", () => {
 
 		const dialog = await screen.findByRole("dialog", { name: "API key created" });
 		expect(within(dialog).getByText(/sk-test-generated-/)).toBeInTheDocument();
-		expect(within(dialog).getByText(/It will not be shown again/)).toBeInTheDocument();
+		expect(within(dialog).getByText(/Configure Codex can reuse the saved token/)).toBeInTheDocument();
 
 		await user.click(getDialogFooterClose(dialog));
 		expect(await screen.findByRole("button", { name: /Created from APIs page/i })).toBeInTheDocument();

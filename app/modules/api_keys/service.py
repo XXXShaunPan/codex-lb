@@ -56,6 +56,8 @@ _REASONING_POLICY_EXCLUSIVE_CONSTRAINT = "ck_api_keys_reasoning_policy_exclusive
 
 
 class ApiKeysRepositoryProtocol(Protocol):
+    async def save_token(self, key_id: str, token: str) -> None: ...
+
     async def create(self, row: ApiKey, *, commit: bool = True) -> ApiKey: ...
 
     async def get_by_id(self, key_id: str) -> ApiKey | None: ...
@@ -525,6 +527,7 @@ class ApiKeysService:
                 limit_rows = [_limit_input_to_row(li, created.id, now) for li in payload.limits]
                 await self._repository.upsert_limits(created.id, limit_rows, commit=False)
 
+            await self._repository.save_token(created.id, plain_key)
             await self._repository.commit()
         except Exception as exc:
             await self._repository.rollback()
@@ -829,13 +832,20 @@ class ApiKeysService:
             raise ApiKeyNotFoundError(f"API key not found: {key_id}")
         old_key_hash = row.key_hash
         plain_key = _generate_plain_key()
-        updated = await self._repository.update(
-            key_id,
-            key_hash=_hash_key(plain_key),
-            key_prefix=plain_key[:15],
-        )
-        if updated is None:
-            raise ApiKeyNotFoundError(f"API key not found: {key_id}")
+        try:
+            updated = await self._repository.update(
+                key_id,
+                key_hash=_hash_key(plain_key),
+                key_prefix=plain_key[:15],
+                commit=False,
+            )
+            if updated is None:
+                raise ApiKeyNotFoundError(f"API key not found: {key_id}")
+            await self._repository.save_token(key_id, plain_key)
+            await self._repository.commit()
+        except BaseException:
+            await self._repository.rollback()
+            raise
         await get_api_key_cache().invalidate(old_key_hash)
         poller = get_cache_invalidation_poller()
         if poller is not None:
