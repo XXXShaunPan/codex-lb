@@ -1178,7 +1178,9 @@ async def test_source_routed_chat_completion_settles_api_key_usage(async_client,
         },
     )
     assert created.status_code == 200
-    assert created.json()["sourceAssignmentScopeEnabled"] is True
+    assert created.json()["accountAssignmentScopeEnabled"] is True
+    assert created.json()["assignedAccountIds"] == [f"model-source:{source_id}"]
+    assert created.json()["sourceAssignmentScopeEnabled"] is False
     key = created.json()["key"]
     key_id = created.json()["id"]
     observed: dict[str, object] = {}

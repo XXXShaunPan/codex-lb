@@ -43,6 +43,9 @@ jobs:
           uv run pytest tests/integration/test_codex_token_pool.py tests/integration/test_config_images_migration.py
           tests/integration/test_relay_image_routing.py tests/integration/test_proxy_images.py
           tests/unit/test_codex_config_updater.py tests/unit/test_images_translation.py tests/unit/test_api_keys_service.py -q
+      - run: >-
+          uv run pytest tests/integration/test_api_keys_api.py tests/unit/test_proxy_api_usage.py
+          tests/integration/test_request_logs_api.py tests/integration/test_request_logs_filters.py -q
       - working-directory: frontend
         run: bun install --frozen-lockfile
       - working-directory: frontend
