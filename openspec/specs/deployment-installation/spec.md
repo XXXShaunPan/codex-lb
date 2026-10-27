@@ -700,7 +700,8 @@ The following values MUST be fixed at their previously documented defaults:
 - Live-usage write coalescing (minimum write interval and queue size).
 - The request-log count-cache TTL.
 - Circuit-breaker tuning (failure threshold and recovery timeout).
-- The images-route internals (internal host model and partial-images cap).
+- The images-route partial-images cap. The relay fork's internal host model
+  SHALL instead follow the dashboard/catalog policy in relay-config-images.
 - The PostgreSQL pool checkout timeout (30 seconds) and pooled-connection
   recycle window (1800 seconds).
 - The soft-drain/probe thresholds (primary drain threshold 85%, secondary

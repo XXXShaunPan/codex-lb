@@ -531,6 +531,7 @@ class RequestLog(Base):
     requested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     model: Mapped[str] = mapped_column(String, nullable=False)
+    image_host_model: Mapped[str | None] = mapped_column(String, nullable=True)
     plan_type: Mapped[str | None] = mapped_column(String, nullable=True)
     source: Mapped[str | None] = mapped_column(String, nullable=True)
     useragent: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -2604,6 +2605,7 @@ Index(
 
 # Native relay tables share the upstream metadata and migration lifecycle.
 from app.modules.codex_config import models as _codex_config_models  # noqa: E402,F401
+from app.modules.image_routing import models as _image_routing_models  # noqa: E402,F401
 from app.modules.provider_billing import models as _provider_billing_models  # noqa: E402,F401
 from app.modules.relay_routing import models as _relay_routing_models  # noqa: E402,F401
 from app.modules.visitor_access import models as _visitor_access_models  # noqa: E402,F401

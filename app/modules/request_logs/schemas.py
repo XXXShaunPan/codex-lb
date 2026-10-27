@@ -26,6 +26,7 @@ class RequestLogEntry(DashboardModel):
     request_kind: str = "normal"
     connection_request_kind: str | None = None
     model: str
+    image_host_model: str | None = None
     source: str | None = None
     model_source_id: str | None = None
     model_source_kind: str | None = None

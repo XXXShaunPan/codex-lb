@@ -1,4 +1,5 @@
 import { VisitorSettings } from "@/features/visitor-access/visitor-settings";
+import { ImageRoutingSettings } from "@/features/image-routing/image-settings";
 import { Suspense, lazy, useState } from "react";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -172,6 +173,7 @@ function AdminSettingsPage() {
 
           <div className="space-y-4">
             <AppearanceSettings />
+            <ImageRoutingSettings />
             <ImportSettings settings={settings} busy={controlsDisabled} onSave={handleSave} />
             <ResetCreditSettings settings={settings} busy={controlsDisabled} onSave={handleSave} />
             {canWrite ? (

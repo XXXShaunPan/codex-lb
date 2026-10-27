@@ -710,14 +710,6 @@ class _CapacityStartupReadyEvent(asyncio.Event):
 
 _OPPORTUNISTIC_RETRY_AFTER_SECONDS = 60
 
-# Internal Responses host model used to invoke the built-in
-# ``image_generation`` tool on the /v1/images/* routes. It is never echoed
-# to clients (only the requested ``gpt-image-*`` value appears in public
-# responses) and is fixed (issue #1340 / PRINCIPLES.md P2): it tracks the
-# registry bootstrap catalog's stable ``gpt-5.5`` slug and changes only in
-# lockstep with catalog maintenance.
-_IMAGES_HOST_MODEL = "gpt-5.5"
-
 # OpenAI error ``type`` -> HTTP status for the /v1/images/* non-streaming
 # error path. The /v1/responses path has its own ``_status_for_error``
 # helper that operates on a parsed ``OpenAIError`` model; the image
@@ -3347,9 +3339,10 @@ async def _proxy_images_generation_request(
     # satisfy, leading to a non-canonical upstream failure instead of
     # a deterministic 400 at the API boundary.
     requested_model = payload.model  # may be None; resolved below.
-    effective_model = _effective_model_for_api_key(
-        api_key,
-        requested_model or DEFAULT_PUBLIC_IMAGE_MODEL,
+    effective_model = (
+        api_key.enforced_model
+        if api_key is not None and images_service_module.is_supported_image_model(api_key.enforced_model or "")
+        else requested_model or DEFAULT_PUBLIC_IMAGE_MODEL
     )
     if not images_service_module.is_supported_image_model(effective_model):
         record_images_route_observability(
@@ -3391,7 +3384,6 @@ async def _proxy_images_generation_request(
 
     public_model = payload.model
     assert public_model is not None
-    host_model = _IMAGES_HOST_MODEL
 
     try:
         validate_model_access(api_key, effective_model)
@@ -3407,6 +3399,18 @@ async def _proxy_images_generation_request(
         raise
 
     rate_limit_headers = await _rate_limit_headers_for_request(context, api_key)
+    from app.modules.image_routing.forwarding import proxy_source_image
+    from app.modules.image_routing.service import choose_image_route
+
+    source, host_model = await choose_image_route(public_model, api_key, stream=stream_requested)
+    if source is not None:
+        return await proxy_source_image(request, source, payload, api_key, context, rate_limit_headers)
+    if host_model is None:
+        return _logged_error_json_response(
+            request,
+            503,
+            openai_error("image_route_unavailable", "No eligible image source or subscription host is available"),
+        )
     try:
         reservation = await _enforce_request_limits(
             api_key,
@@ -3466,6 +3470,9 @@ async def _proxy_images_generation_request(
         client_ip=resolve_request_client_host(request),
     )
 
+    from app.modules.image_routing.identity import image_identity_stream
+
+    upstream = image_identity_stream(upstream, public_model, host_model)
     # ``images_service`` populates ``response_id`` once the upstream stream
     # surfaces the Responses id, so we can rewrite the request log's model
     # column from the internal host model to the public ``gpt-image-*``
@@ -3655,9 +3662,10 @@ async def _proxy_images_edit_request(
     # will actually send upstream. See the matching comment in
     # ``_proxy_images_generation_request``.
     requested_model = payload.model
-    effective_model = _effective_model_for_api_key(
-        api_key,
-        requested_model or DEFAULT_PUBLIC_IMAGE_MODEL,
+    effective_model = (
+        api_key.enforced_model
+        if api_key is not None and images_service_module.is_supported_image_model(api_key.enforced_model or "")
+        else requested_model or DEFAULT_PUBLIC_IMAGE_MODEL
     )
     if not images_service_module.is_supported_image_model(effective_model):
         record_images_route_observability(
@@ -3696,7 +3704,6 @@ async def _proxy_images_edit_request(
 
     public_model = payload.model
     assert public_model is not None
-    host_model = _IMAGES_HOST_MODEL
 
     try:
         validate_model_access(api_key, effective_model)
@@ -3712,6 +3719,20 @@ async def _proxy_images_edit_request(
         raise
 
     rate_limit_headers = await _rate_limit_headers_for_request(context, api_key)
+    from app.modules.image_routing.forwarding import proxy_source_image
+    from app.modules.image_routing.service import choose_image_route
+
+    source, host_model = await choose_image_route(public_model, api_key, stream=stream_requested)
+    if source is not None:
+        return await proxy_source_image(
+            request, source, payload, api_key, context, rate_limit_headers, images=images, mask=mask
+        )
+    if host_model is None:
+        return _logged_error_json_response(
+            request,
+            503,
+            openai_error("image_route_unavailable", "No eligible image source or subscription host is available"),
+        )
     try:
         reservation = await _enforce_request_limits(
             api_key,
@@ -3774,6 +3795,9 @@ async def _proxy_images_edit_request(
         client_ip=resolve_request_client_host(request),
     )
 
+    from app.modules.image_routing.identity import image_identity_stream
+
+    upstream = image_identity_stream(upstream, public_model, host_model)
     captured: dict[str, object] = {}
 
     primed_upstream, prime_error = await _prime_upstream_stream(

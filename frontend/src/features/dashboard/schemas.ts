@@ -209,6 +209,7 @@ export const RequestLogSchema = z.object({
   requestKind: z.string().optional().default("normal"),
   connectionRequestKind: z.enum(["normal", "prewarm"]).nullable().optional(),
   model: z.string(),
+  imageHostModel: z.string().nullable().optional(),
   source: z.string().nullable().optional().default(null),
   modelSourceId: z.string().nullable().optional(),
   modelSourceKind: z.string().nullable().optional(),

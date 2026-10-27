@@ -1062,6 +1062,20 @@ class RequestLogsRepository:
             )
             resolved_conversation_id = _normalize_conversation_id(conversation_id)
             resolved_client_ip = client_ip if not isinstance(client_ip, str) or client_ip.strip() else None
+            from app.modules.image_routing.identity import image_identity
+
+            image_route = (
+                image_identity.get() if model_source_id is None and request_kind == RequestKind.NORMAL.value else None
+            )
+            if image_route is not None:
+                # Image routes settle only tool usage, never the Responses
+                # host's text usage. Bind tokens to the terminal response id
+                # so an earlier failed retry cannot inherit a later result.
+                image_usage = image_route.usage if image_route.response_id == resolved_request_id else None
+                input_tokens = image_usage.input_tokens if image_usage is not None else None
+                output_tokens = image_usage.output_tokens if image_usage is not None else None
+                cached_input_tokens = image_route.cached_input_tokens if image_usage is not None else None
+                reasoning_tokens = None
             log = RequestLog(
                 account_id=account_id,
                 model_source_id=model_source_id,
@@ -1070,7 +1084,8 @@ class RequestLogsRepository:
                 session_id=session_id,
                 request_id=resolved_request_id,
                 archive_request_id=resolved_archive_request_id,
-                model=model,
+                model=image_route.public_model if image_route is not None else model,
+                image_host_model=image_route.host_model if image_route is not None else None,
                 plan_type=resolved_plan_type,
                 source=source,
                 transport=transport,

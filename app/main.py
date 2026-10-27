@@ -1041,6 +1041,9 @@ def create_app() -> FastAPI:
     from app.modules.relay_routing.api import router as routing_weights_router
 
     app.include_router(routing_weights_router)
+    from app.modules.image_routing.api import router as image_routing_router
+
+    app.include_router(image_routing_router)
     app.include_router(model_sources_api.router)
     app.include_router(health_api.router)
 

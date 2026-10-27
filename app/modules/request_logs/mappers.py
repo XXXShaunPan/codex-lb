@@ -55,6 +55,7 @@ def to_request_log_entry(
         request_kind=log.request_kind,
         connection_request_kind=log.connection_request_kind,
         model=log.model,
+        image_host_model=log.image_host_model,
         source=log.source,
         model_source_id=log.model_source_id,
         model_source_kind=log.model_source_kind,

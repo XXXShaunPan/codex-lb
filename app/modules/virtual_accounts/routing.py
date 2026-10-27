@@ -91,6 +91,7 @@ async def _choose_virtual_candidate(
     api_key: Any | None,
     sources: Sequence[tuple[Any, str]],
     include_accounts: bool = True,
+    account_model: str | None = None,
     lease_kind: Literal["response_create", "stream"] | None = None,
 ) -> tuple[Any, str] | None:
     """Return a selected source, or None when the shared strategy chose an account."""
@@ -131,7 +132,7 @@ async def _choose_virtual_candidate(
     if not include_accounts:
         scoped_account_ids = set()
     selection_inputs = await load_balancer._load_selection_inputs(
-        model=model,
+        model=account_model or model,
         service_tier=None,
         account_ids=scoped_account_ids,
     )

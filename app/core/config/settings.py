@@ -406,9 +406,8 @@ class Settings(BaseSettings):
     conversation_archive_dir: Path = DEFAULT_CONVERSATION_ARCHIVE_DIR
     conversation_archive_queue_max_bytes: int = Field(default=256 * 1024 * 1024, gt=0)
     # OpenAI Images API compatibility (POST /v1/images/{generations,edits}):
-    # the public default model (``gpt-image-2``) and the internal Responses
-    # host model are fixed constants (``app/core/openai/images.py`` /
-    # ``app/modules/proxy/api.py``). There is intentionally no ``images_max_n``
+    # The public image model and the separately managed Responses host are
+    # resolved by app.modules.image_routing. There is no ``images_max_n``
     # setting: the upstream ``image_generation`` tool path accepts only a
     # single image per call and codex-lb does not yet implement client-side
     # fan-out, so ``n > 1`` is hard-rejected at the API boundary. The cap is

@@ -307,6 +307,8 @@ async def test_images_generations_no_accounts_returns_5xx(async_client):
 @pytest.mark.asyncio
 async def test_images_generations_returns_envelope_on_success(async_client, monkeypatch, caplog):
     await _import_account(async_client, "acc_images_basic", "img-basic@example.com")
+    configured = await async_client.put("/api/image-routing/settings", json={"hostModel": "gpt-5.4"})
+    assert configured.status_code == 200, configured.text
 
     captured: dict[str, object] = {}
 
@@ -372,17 +374,116 @@ async def test_images_generations_returns_envelope_on_success(async_client, monk
     assert body["usage"] == {"input_tokens": 7, "output_tokens": 13, "total_tokens": 20}
 
     # The host model is hidden from clients but appears in the upstream call.
-    assert captured["model"] == "gpt-5.5"
+    assert captured["model"] == "gpt-5.4"
     tools = cast(list[Any], captured["tools"])
     image_tool = cast(dict[str, Any], tools[0])
     assert image_tool["type"] == "image_generation"
     assert image_tool["model"] == "gpt-image-2"
     assert image_tool["size"] == "1024x1024"
     assert image_tool["quality"] == "low"
+    from app.db.models import RequestLog
+    from app.dependencies import get_proxy_service_for_app
+    from app.main import app
+
+    await get_proxy_service_for_app(app).drain_persistence_tasks(timeout_seconds=5)
+    async with SessionLocal() as session:
+        logs = list((await session.scalars(select(RequestLog))).all())
+        assert logs and all(log.model == "gpt-image-2" for log in logs)
+        assert all(log.image_host_model == "gpt-5.4" for log in logs)
+        assert logs[-1].cost_usd == pytest.approx((7 * 5 + 13 * 30) / 1_000_000)
     assert (
         "images_route_complete route=generations model=gpt-image-2 stream=false status=200 outcome=success"
         in caplog.text
     )
+
+
+@pytest.mark.asyncio
+async def test_images_mixed_pool_uses_shared_priority_groups(async_client, monkeypatch):
+    from datetime import timedelta
+
+    from aiohttp import web
+
+    from app.core.utils.time import utcnow
+    from app.db.models import Account, UsageHistory
+    from app.modules.proxy.account_cache import get_account_selection_cache
+    from tests.integration.model_source_helpers import _create_model_source, stub_source_upstreams
+
+    await _import_account(async_client, "acc_images_mixed", "mixed@example.test")
+    await async_client.put("/api/settings", json={"routingStrategy": "custom_weighted_quota"})
+    await async_client.put("/api/image-routing/settings", json={"hostModel": "gpt-5.4"})
+    calls = []
+
+    async def subscription(payload, *args, **kwargs):
+        assert payload.model == "gpt-5.4"
+        calls.append("subscription")
+        yield _sse(
+            {
+                "type": "response.output_item.done",
+                "item": {"type": "image_generation_call", "status": "completed", "result": "account-image"},
+            }
+        )
+        yield _sse(
+            {
+                "type": "response.completed",
+                "response": {
+                    "id": "mixed-response",
+                    "status": "completed",
+                    "tool_usage": {"image_gen": {"input_tokens": 1, "output_tokens": 1}},
+                },
+            }
+        )
+
+    async def fresh(self, account, **kwargs):
+        return account
+
+    monkeypatch.setattr(proxy_module, "core_stream_responses", subscription)
+    monkeypatch.setattr(proxy_module.ProxyService, "_ensure_fresh_with_budget", fresh)
+
+    async def source_handler(request):
+        calls.append("source")
+        assert (await request.json())["model"] == "gpt-image-2"
+        return web.json_response(
+            {"created": 1, "data": [{"b64_json": "source-image"}], "usage": {"input_tokens": 1, "output_tokens": 1}}
+        )
+
+    async def set_quota(used, tick):
+        async with SessionLocal() as session:
+            account = await session.scalar(select(Account))
+            for window, minutes in [("primary", 300), ("secondary", 10080)]:
+                session.add(
+                    UsageHistory(
+                        account_id=account.id,
+                        window=window,
+                        window_minutes=minutes,
+                        used_percent=used,
+                        recorded_at=utcnow() + timedelta(seconds=tick),
+                    )
+                )
+            await session.commit()
+        get_account_selection_cache().invalidate()
+
+    async with stub_source_upstreams() as start:
+        source = await _create_model_source(
+            async_client, name="mixed-images", model="gpt-image-2", base_url=await start(source_handler)
+        )
+        await set_quota(40, 0)
+        assert (
+            await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
+        ).status_code == 200
+        assert calls == ["subscription"]
+        await set_quota(90, 1)
+        assert (
+            await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
+        ).status_code == 200
+        assert calls == ["subscription", "source"]
+        # Explicit zero weight removes the source even when Plus is downgraded.
+        assert (
+            await async_client.put(f"/api/relay-routing/weights/model-source:{source}", json={"weight": 0})
+        ).status_code == 200
+        assert (
+            await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
+        ).status_code == 200
+        assert calls == ["subscription", "source", "subscription"]
 
 
 @pytest.mark.asyncio
