@@ -39,3 +39,12 @@ reported image-tool tokens. Source logs retain the source identity and durable
 pricing snapshot. Both use the existing account-pool image tariff; it currently
 uses one input rate, so this is a customer tariff, not exact text/image-modality
 reconciliation with a provider invoice. No historical fees are rewritten.
+
+## Verified deployment
+
+`custom-v1.25.0-beta.7.4` passed the relay CI gate on 2026-10-27 and was deployed
+without rotating the three existing keys. Live low-quality image probes verified
+both Compass native Images routing (20 input / 196 output tokens, USD 0.00598)
+and subscription routing with independent `gpt-6.1-terra` host (20 / 386 tokens,
+USD 0.01168). Probe keys and visitors were removed afterward. The deployed UI
+matches the production build and both health endpoints return 200.
