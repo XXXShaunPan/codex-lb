@@ -1,0 +1,5 @@
+- [x] Implement native setup and targeted cleanup engines without Python.
+- [x] Update modal wording and operation-specific behavior.
+- [x] Execute fixtures on native shells, covering preservation, safety and idempotence.
+- [ ] Validate/build/CI and sync documentation.
+- [ ] Deploy the verified frontend without modifying keys or database state.
