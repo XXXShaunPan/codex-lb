@@ -772,6 +772,31 @@ def test_responses_accepts_known_include_values():
     assert request.include == ["reasoning.encrypted_content", "web_search_call.action.sources"]
 
 
+@pytest.mark.parametrize("openai_compat", [False, True])
+@pytest.mark.parametrize(
+    "include",
+    [
+        ["web_search_call.results"],
+        ["web_search_call.results", "web_search_call.action.sources", "reasoning.encrypted_content"],
+        pytest.param(["output.encrypted_content"], id="encrypted_output_only"),
+        pytest.param(
+            ["output.encrypted_content", "reasoning.encrypted_content", "web_search_call.results"],
+            id="encrypted_output_mixed",
+        ),
+    ],
+)
+def test_responses_preserves_supported_includes(openai_compat, include):
+    payload = {"model": "gpt-5.1", "instructions": "", "input": "weather", "include": include}
+    if openai_compat:
+        request = V1ResponsesRequest.model_validate(payload).to_responses_request()
+    else:
+        request = ResponsesRequest.model_validate(payload)
+
+    assert request.include == include
+    assert request.to_payload()["include"] == include
+    assert request.model_dump_for_forwarding()["include"] == include
+
+
 def test_responses_accepts_previous_response_id_without_conversation():
     payload = {
         "model": "gpt-5.1",

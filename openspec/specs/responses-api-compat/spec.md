@@ -4,6 +4,47 @@
 
 Define Responses API compatibility contracts so Codex, OpenCode, and OpenAI-style clients preserve expected behavior.
 ## Requirements
+### Requirement: Responses requests preserve the observed encrypted-output include
+
+The shared native and v1 Responses request schema MUST accept `output.encrypted_content` as an include option. HTTP, WebSocket, and model-source forwarding MUST preserve its spelling and relative order. The proxy MUST NOT replace it with `reasoning.encrypted_content`, remove it, or inject a reasoning include that the client did not send. Existing include options, unknown-value/type rejection, provider capability policy, routing, and billing MUST remain unchanged.
+
+#### Scenario: A desktop request asks for encrypted output
+
+- **WHEN** a native or v1 Responses request includes `output.encrypted_content` alone
+- **THEN** local include validation succeeds and serialization preserves that exact option
+- **AND** no `reasoning.encrypted_content` option is added
+
+#### Scenario: Mixed encryption includes pass through all routes
+
+- **WHEN** an account HTTP route, equivalent trailing-slash route, WebSocket create, or model-source route receives both encrypted-output and encrypted-reasoning includes
+- **THEN** forwarding preserves both entries independently and in their original order
+
+#### Scenario: An unsupported option remains invalid
+
+- **WHEN** a request mixes `output.encrypted_content` with an unknown include value or a non-string entry
+- **THEN** the existing invalid-payload error contract is preserved before upstream dispatch
+
+### Requirement: Responses requests accept documented web-search result includes
+
+The shared native and OpenAI-compatible Responses request schema MUST accept `web_search_call.results` in `include`, both alone and alongside existing supported values. HTTP and WebSocket request normalization MUST preserve accepted include entries and their order. This requirement MUST NOT bypass existing provider-specific hosted-tool capability filtering, alter account selection or billing, or permit unknown include values or invalid field types.
+
+#### Scenario: A web-search request asks for result details
+
+- **WHEN** a native or v1 Responses HTTP request, including its equivalent trailing-slash path, contains a web-search tool and `include` with `web_search_call.results`
+- **THEN** local include validation succeeds
+- **AND** the subscription upstream receives the accepted include list unchanged
+
+#### Scenario: A WebSocket create frame mixes supported include values
+
+- **WHEN** a Responses WebSocket create frame contains `web_search_call.results` and `reasoning.encrypted_content`
+- **THEN** normalization forwards both entries in their original order
+
+#### Scenario: A request also contains an unknown include value
+
+- **WHEN** an include list mixes `web_search_call.results` with an unsupported value
+- **THEN** the existing invalid-payload error contract is preserved
+- **AND** no upstream connection or request is made
+
 ### Requirement: Use prompt_cache_key as OpenAI cache affinity
 For OpenAI-style `/v1/responses`, `/v1/responses/compact`, and chat-completions requests mapped onto Responses, the service MUST treat a non-empty `prompt_cache_key` as the bounded upstream account affinity key for prompt-cache correctness even when a `session_id` header is present. OpenAI-style route wiring MUST NOT upgrade those requests to durable `CODEX_SESSION` affinity by default. This affinity MUST apply even when dashboard `sticky_threads_enabled` is disabled, the service MUST continue forwarding the same `prompt_cache_key` upstream unchanged, and the stored affinity MUST expire after the configured freshness window so older keys can rebalance. The freshness window MUST come from dashboard settings so operators can adjust it without restart.
 

@@ -225,6 +225,73 @@ async def test_v1_responses_forwards_include_logprobs(async_client, monkeypatch)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "route", ["/backend-api/codex/responses", "/backend-api/codex/responses/", "/v1/responses", "/v1/responses/"]
+)
+@pytest.mark.parametrize(
+    "include",
+    [
+        ["web_search_call.results", "web_search_call.action.sources", "reasoning.encrypted_content"],
+        ["output.encrypted_content", "reasoning.encrypted_content"],
+    ],
+)
+async def test_responses_forwards_supported_tool_includes(async_client, monkeypatch, route, include):
+    await _import_account(async_client, "acc_search_include", "search-include@example.com")
+    seen: list[ResponsesRequest] = []
+
+    async def fake_stream(payload, headers, access_token, account_id, **kwargs):
+        seen.append(payload)
+        yield _completed_event("resp_search_include")
+
+    monkeypatch.setattr(proxy_module, "core_stream_responses", fake_stream)
+    response = await async_client.post(
+        route,
+        json={
+            "model": "gpt-5.2",
+            "instructions": "",
+            "input": "Get the weather.",
+            "tools": [{"type": "web_search"}],
+            "include": include,
+            "stream": True,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "response.completed" in response.text
+    assert len(seen) == 1
+    assert seen[0].to_payload()["include"] == include
+    assert seen[0].tools == [{"type": "web_search"}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("route", ["/backend-api/codex/responses", "/v1/responses"])
+async def test_responses_model_source_preserves_encrypted_output_include(async_client, monkeypatch, route):
+    await _import_account(async_client, "acc_output_include", "output-include@example.com")
+    source = object()
+    seen: list[ResponsesRequest] = []
+
+    async def fake_select(model, api_key, *, raw_model=None, require_streaming=False):
+        return source, model
+
+    async def fake_source_response(request, payload, **kwargs):
+        seen.append(payload)
+        return JSONResponse({"id": "resp_output_include_source", "status": "completed", "output": []})
+
+    monkeypatch.setattr(proxy_api_module, "_select_responses_model_source", fake_select)
+    monkeypatch.setattr(proxy_api_module, "_source_responses_response", fake_source_response)
+    include = ["output.encrypted_content", "reasoning.encrypted_content"]
+    response = await async_client.post(
+        route,
+        json={"model": "gpt-5.6-sol", "instructions": "", "input": "hello", "include": include},
+    )
+
+    assert response.status_code == 200
+    assert len(seen) == 1
+    assert seen[0].model_dump_for_forwarding()["include"] == include
+
+
+@pytest.mark.asyncio
 async def test_v1_responses_preserves_prompt_cache_controls(async_client, monkeypatch):
     await _import_account(async_client, "acc_prompt_cache_v1", "prompt-cache-v1@example.com")
 
@@ -408,10 +475,30 @@ async def test_backend_responses_normalizes_fast_service_tier_for_upstream(async
 
 
 @pytest.mark.asyncio
-async def test_v1_responses_rejects_invalid_include(async_client):
-    payload = {"model": "gpt-5.2", "input": "hi", "include": ["not_allowed"]}
-    resp = await async_client.post("/v1/responses", json=payload)
+@pytest.mark.parametrize("route", ["/backend-api/codex/responses", "/v1/responses"])
+@pytest.mark.parametrize(
+    "include",
+    [
+        ["not_allowed"],
+        ["web_search_call.results", "not_allowed"],
+        ["output.encrypted_content", "not_allowed"],
+        ["output.encrypted_content", 123],
+        [123],
+        "not_a_list",
+    ],
+)
+async def test_responses_rejects_invalid_include(async_client, monkeypatch, route, include):
+    async def fail_stream(*args, **kwargs):
+        raise AssertionError("invalid include must not dispatch upstream")
+        yield ""  # pragma: no cover
+
+    monkeypatch.setattr(proxy_module, "core_stream_responses", fail_stream)
+    payload = {"model": "gpt-5.2", "instructions": "", "input": "hi", "include": include}
+    resp = await async_client.post(route, json=payload)
     assert resp.status_code == 400
+    assert resp.json()["error"]["type"] == "invalid_request_error"
+    assert resp.json()["error"]["message"] == "Invalid request payload"
+    assert resp.json()["error"]["param"].startswith("include")
 
 
 @pytest.mark.asyncio

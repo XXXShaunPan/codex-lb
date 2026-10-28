@@ -4968,7 +4968,15 @@ def test_v1_responses_websocket_accepts_and_reuses_generated_turn_state(app_inst
     assert seen["sticky_kind"] == proxy_module.StickySessionKind.PROMPT_CACHE
 
 
-def test_v1_responses_websocket_normalizes_payload_before_forwarding(app_instance, monkeypatch):
+@pytest.mark.parametrize(
+    "include",
+    [
+        [],
+        ["web_search_call.results", "reasoning.encrypted_content"],
+        ["output.encrypted_content", "reasoning.encrypted_content"],
+    ],
+)
+def test_v1_responses_websocket_normalizes_payload_before_forwarding(app_instance, monkeypatch, include):
     upstream_messages = [
         _FakeUpstreamMessage(
             "text",
@@ -5049,6 +5057,7 @@ def test_v1_responses_websocket_normalizes_payload_before_forwarding(app_instanc
         "promptCacheKey": "thread_alias",
         "promptCacheRetention": "12h",
         "tools": [{"type": "web_search_preview"}],
+        "include": include,
         "service_tier": "priority",
         "stream": True,
     }
@@ -5077,7 +5086,7 @@ def test_v1_responses_websocket_normalizes_payload_before_forwarding(app_instanc
                 "tools": [{"type": "web_search"}],
                 "service_tier": "priority",
                 "store": False,
-                "include": [],
+                "include": include,
                 "prompt_cache_key": "thread_alias",
                 "type": "response.create",
             }
@@ -5085,7 +5094,15 @@ def test_v1_responses_websocket_normalizes_payload_before_forwarding(app_instanc
     )
 
 
-def test_v1_responses_websocket_rejects_invalid_payload_before_connect(app_instance, monkeypatch):
+@pytest.mark.parametrize(
+    "invalid_fields",
+    [
+        {"truncation": "middle"},
+        {"include": ["web_search_call.results", "bad"]},
+        {"include": ["output.encrypted_content", "bad"]},
+    ],
+)
+def test_v1_responses_websocket_rejects_invalid_payload_before_connect(app_instance, monkeypatch, invalid_fields):
     called = {"connect": False}
 
     class _FakeSettingsCache:
@@ -5116,7 +5133,7 @@ def test_v1_responses_websocket_rejects_invalid_payload_before_connect(app_insta
                         "type": "response.create",
                         "model": "gpt-5.4",
                         "input": "hi",
-                        "truncation": "middle",
+                        **invalid_fields,
                     }
                 )
             )
