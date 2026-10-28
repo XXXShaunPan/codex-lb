@@ -30,6 +30,10 @@ comments distinguish flags introduced by setup or overridden from false. Both
 operations keep timestamped backups and atomically replace the prepared result.
 The native command tests use tomllib solely as an independent development oracle.
 
+The native-only commands and targeted cleanup were deployed on 2026-10-28 after
+macOS/Ubuntu/Windows CI and administrator/visitor browser verification. Only the
+frontend resources changed, with no service restart or server Key mutation.
+
 The public `gpt-image-2` model remains independent of the Responses host.
 `/api/image-routing/settings` is admin-only. An empty host selects from the
 catalog; visible subscription image-input entries with explicit image-tool
