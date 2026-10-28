@@ -104,4 +104,21 @@ describe("native relay role controls", () => {
       screen.getByRole("button", { name: /Model Source/ }),
     ).toBeInTheDocument();
   });
+  it("offers targeted cleanup without selecting or resetting a key", async () => {
+    renderWithProviders(<CodexConfigButton apiKeys={[]} />);
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Restore Codex config" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Remove Codex-LB settings" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not restore an old backup or reset any API key/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Configuration command" }),
+    ).not.toHaveValue(expect.stringContaining("Python 3.11"));
+  });
 });

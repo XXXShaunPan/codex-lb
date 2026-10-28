@@ -9,12 +9,26 @@
 重置任何旧 Key。API Key 原有的“重新生成”操作也会同步更新 token 池。
 
 选择 macOS/Linux 的 Bash 或 Windows 的 PowerShell 命令后复制执行。
-需要 Python 3.11+，无需安装 Python 库。命令使用当前网站地址，更新当前自定义
+使用系统自带 Shell/awk 或 Windows PowerShell 5.1+，无需安装 Python、Node 或库。
+命令使用当前网站地址，更新当前自定义
 Provider（没有则创建 `openai_https`），把 token 直接写进 config.toml，启用
 `api_key_model_discovery`，并设置模型目录与 actor header。执行后完全重启 Codex。
 
-修改前会生成 `config.toml.bak.<时间戳>`；无变化时不重复备份。无效 TOML 会中止，
-不会覆盖原文件。恢复按钮可恢复最近备份，但无法恢复已被服务端重置的旧 Key。
+修改前会生成 `config.toml.bak.<时间戳>.<唯一后缀>`；无变化时不重复备份。
+遇到引号/括号不完整、重复目标配置或无法安全解析的结构，会中止并保留原文件。
+命令在本地处理配置，不上传配置内容、不下载执行程序。
+
+“恢复 Codex 配置”现在是定向清理，不再从旧备份覆盖整个文件：
+
+- 识别带有 Codex-LB actor header、本站地址，或 Codex backend 地址配合
+  `sk-clb-` token / 旧版 `codex-lb.key` 读取器的 Provider。
+- 移除这些 Provider 的 `base_url`、`model_catalog_url`、token、专属请求头和
+  连接覆盖项，以及指向它们的 `model_provider` 选择；其他请求头仍保留。
+- 保留模型、MCP、项目、其他 Provider 和后来新增的配置。通用模型发现开关若
+  原本存在则保留；新生成器添加/覆盖的开关有注释标记，可清理或恢复原有 false。
+- 清理前也备份；无需选择或重置 API Key；不修改 `auth.json`。执行后重启 Codex。
+
+备份仍可供手动回退，但无法恢复已被服务端重置的旧 Key。
 原先的 `codex-lb.key` 文件不再用于新配置，不会被自动删除。
 
 管理员与访客均可使用；访客仅能导出分配给自己的有效 Key。普通 Key 列表不会

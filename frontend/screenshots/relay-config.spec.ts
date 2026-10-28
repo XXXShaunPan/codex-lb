@@ -47,12 +47,18 @@ for (const guest of [false, true]) {
     await page.screenshot({path:testInfo.outputPath("missing-token.png"),fullPage:true});
     await page.getByRole("checkbox",{name:/I confirm resetting/}).check();
     await button.click();
-    await expect(page.getByRole("textbox",{name:"Configuration command"})).toContainText("base64.b64decode");
+    await expect(page.getByRole("textbox",{name:"Configuration command"})).toContainText("FromBase64String");
     expect(exports).toEqual([{apiKeyId:key.id,resetKey:false,confirmReset:true}]);
     await page.keyboard.press("Escape");
     await page.getByRole("button",{name:"Configure Codex",exact:true}).click();
     await expect(page.getByRole("button",{name:"Generate configuration",exact:true})).toBeEnabled();
     await page.screenshot({path:testInfo.outputPath("saved-token.png"),fullPage:true});
+    await page.keyboard.press("Escape");
+    await page.getByRole("button",{name:"Restore Codex config",exact:true}).click();
+    await expect(page.getByRole("heading",{name:"Remove Codex-LB settings"})).toBeVisible();
+    await expect(page.getByRole("textbox",{name:"Configuration command"})).toContainText("Remove-RelayConfiguration");
+    expect(exports).toHaveLength(1);
+    await page.screenshot({path:testInfo.outputPath("targeted-cleanup.png"),fullPage:true});
     if (!guest) {
       await page.keyboard.press("Escape");
       await page.goto(base + "/settings");

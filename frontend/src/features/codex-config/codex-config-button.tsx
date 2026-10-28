@@ -18,6 +18,7 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
   const zh = i18n.language.startsWith("zh");
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [operation, setOperation] = useState<"setup" | "cleanup">("setup");
   const [keyId, setKeyId] = useState("");
   const [model, setModel] = useState("gpt-6-astra");
   const [platform, setPlatform] = useState<"macos" | "linux" | "windows">(
@@ -59,6 +60,7 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
         <Button
           disabled={!activeKeys.length}
           onClick={() => {
+            setOperation("setup");
             setCommands(null);
             setOpen(true);
           }}
@@ -68,6 +70,7 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
         <Button
           variant="outline"
           onClick={() => {
+            setOperation("cleanup");
             setCommands(buildCodexRestoreCommands());
             setOpen(true);
           }}
@@ -77,11 +80,23 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
       </div>
       <Dialog open={open} onOpenChange={close}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogTitle>{zh ? "Codex 配置" : "Codex configuration"}</DialogTitle>
+          <DialogTitle>
+            {operation === "cleanup"
+              ? zh
+                ? "移除 Codex-LB 配置"
+                : "Remove Codex-LB settings"
+              : zh
+                ? "Codex 配置"
+                : "Codex configuration"}
+          </DialogTitle>
           <DialogDescription>
-            {zh
-              ? "命令使用 Python 3.11+，先备份 config.toml，再更新当前 Provider、模型目录和功能开关。Token 直接保存在配置中。执行后请重启 Codex。"
-              : "Requires Python 3.11+. Backs up config.toml, updates the active provider and model discovery, and saves the token inline. Restart Codex afterward."}
+            {operation === "cleanup"
+              ? zh
+                ? "无需 Python。先备份当前配置，再仅移除 Codex-LB 的地址、token、专用请求头及关联 Provider 选择；保留模型、MCP、项目和其他 Provider，不使用旧备份覆盖，也不重置 API Key。"
+                : "No Python required. Backs up the current file, then removes only Codex-LB URLs, token, actor header and provider selectors. Keeps models, MCP, projects and other providers; does not restore an old backup or reset any API key."
+              : zh
+                ? "使用系统自带 Shell/awk 或 PowerShell，无需 Python。先备份 config.toml，再更新 Provider 与模型发现，token 直接保存在配置中。执行后请重启 Codex。"
+                : "Uses system shell/awk or PowerShell; no Python required. Backs up config.toml, updates the provider and model discovery, and saves the token inline. Restart Codex afterward."}
           </DialogDescription>
           <label className="text-sm">
             {zh ? "操作系统" : "Operating system"}
@@ -245,9 +260,13 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
                     : "Copy command"}
               </Button>
               <p className="text-sm">
-                {zh
-                  ? "可再次生成配置并复用已保存的 Key。执行命令后请完全退出并重启 Codex。"
-                  : "You can generate this configuration again using the saved key. Fully restart Codex after running it."}
+                {operation === "cleanup"
+                  ? zh
+                    ? "执行后请完全退出并重启 Codex；原有登录文件不会被修改。"
+                    : "Fully restart Codex afterward. Your existing login file is not modified."
+                  : zh
+                    ? "可再次生成配置并复用已保存的 Key。执行命令后请完全退出并重启 Codex。"
+                    : "You can generate this configuration again using the saved key. Fully restart Codex after running it."}
               </p>
             </div>
           )}

@@ -10,16 +10,25 @@ from the authentication hash cannot be exported.
 
 For example, a visitor assigned key A may export A repeatedly without resetting
 it, but cannot inspect key B's status or retrieve B. Choosing reset invalidates
-old clients; restoring config.toml does not undo a server-side key reset.
+old clients; removing relay configuration does not undo a server-side key reset.
 Database and backup access now grants access to saved tokens. Protect both,
 along with generated commands and config.toml, as credentials.
 
-The generated Bash/PowerShell command requires Python 3.11+ (no pip packages).
+The generated commands use POSIX shell/awk or built-in PowerShell 5.1+; no client
+Python, Node, package installation, downloaded executable or configuration upload.
 It derives URLs from the web origin, updates the active custom provider or
 `openai_https`, stores the token inline, enables model discovery and retains
-unrelated configuration. Invalid TOML fails before writing; an unchanged result
+unrelated configuration. Structurally ambiguous TOML fails before writing; an unchanged result
 creates no redundant backup. The legacy key file is left untouched but no
 longer used by the configured provider.
+
+Restore means targeted cleanup, not replacing the file with a historical backup.
+Only positively identified relay provider fields/selectors are removed, including
+legacy key-file auth readers. User models, MCP, projects, other providers and
+unrelated headers survive. Existing generic discovery flags remain; new ownership
+comments distinguish flags introduced by setup or overridden from false. Both
+operations keep timestamped backups and atomically replace the prepared result.
+The native command tests use tomllib solely as an independent development oracle.
 
 The public `gpt-image-2` model remains independent of the Responses host.
 `/api/image-routing/settings` is admin-only. An empty host selects from the
