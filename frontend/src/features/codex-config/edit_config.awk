@@ -169,30 +169,21 @@ function setup(    p,id,only,n,a,prefix) {
     if(Discovery=="") { if(!(DK in F)) Discovery="owned"; else if(F[DK]=="false") Discovery="was-false" }
     set_value(DK,"true")
 }
-function cleanup(    id,prefix,p,a,n,k,fields,remaining) {
+function cleanup(    id,prefix,p,n,k,fields) {
     for(id in Providers) if(is_relay(id)) {
-        Removed[id]=1; RemovedCount++; prefix="model_providers" S id
-        for(p in F) if(index(p,prefix S "auth" S)==1 && index(F[p],"codex-lb.key")) { remove_prefix(prefix S "auth"); break }
-        n=split("base_url model_catalog_url experimental_bearer_token requires_openai_auth wire_api supports_websockets",fields," ")
-        for(k=1;k<=n;k++) delete F[prefix S fields[k]]
-        for(p in F) {
-            n=split(p,a,S)
-            if(n==4 && a[1]=="model_providers" && a[2]==id && a[3]=="http_headers" && tolower(a[4])=="x-openai-actor-authorization" && string_value(F[p])=="codex-lb") delete F[p]
+        prefix="model_providers" S id
+        n=split("base_url model_catalog_url experimental_bearer_token",fields," ")
+        for(k=1;k<=n;k++) {
+            p=prefix S fields[k]
+            if(p in F) { delete F[p]; RemovedCount++; Tables[prefix]=1 }
         }
-        remaining=0; for(p in F) if(index(p,prefix S)==1 && p!=prefix S "name") remaining++
-        for(p in Tables) if(index(p,prefix S)==1 && p!=prefix S "http_headers" && p!=prefix S "env_http_headers") remaining++
-        if(!remaining) remove_prefix(prefix)
     }
-    if(RemovedCount && Discovery=="owned") { delete F[DK]; Discovery="" }
-    else if(RemovedCount && Discovery=="was-false") { F[DK]="false"; Discovery="" }
 }
 function render(    result,i,p,a,n,group,g,k,body,groups,gn,have) {
     if(MODE=="cleanup" && !RemovedCount) return Original
     result=""
     for(i=1;i<=RC;i++) {
         if(MODE=="setup" && (RP[i]=="model" || RP[i]=="model_provider")) continue
-        n=split(RP[i],a,S)
-        if(MODE=="cleanup" && (RP[i]=="model_provider" || (n==3 && a[1]=="profiles" && a[3]=="model_provider")) && string_value(RV[i]) in Removed) continue
         result=result R[i] "\n"
     }
     sub(/^\n+/,"",result); sub(/\n+$/,"",result)

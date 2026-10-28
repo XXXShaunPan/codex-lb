@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,7 +30,6 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
   const [commands, setCommands] = useState<Record<string, string> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const activeKeys = apiKeys.filter((key) => key.isActive);
   const selected = activeKeys.find((key) => key.id === keyId) ?? activeKeys[0];
   const tokenStatus = useQuery({
@@ -51,7 +51,6 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
       setConfirmed(false);
       setResetRequested(false);
       setError(null);
-      setCopied(false);
     }
   };
   return (
@@ -92,8 +91,8 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
           <DialogDescription>
             {operation === "cleanup"
               ? zh
-                ? "无需 Python。先备份当前配置，再仅移除 Codex-LB 的地址、token、专用请求头及关联 Provider 选择；保留模型、MCP、项目和其他 Provider，不使用旧备份覆盖，也不重置 API Key。"
-                : "No Python required. Backs up the current file, then removes only Codex-LB URLs, token, actor header and provider selectors. Keeps models, MCP, projects and other providers; does not restore an old backup or reset any API key."
+                ? "无需 Python。先备份当前配置，仅删除 Codex-LB Provider 的 base_url、model_catalog_url、experimental_bearer_token。保留 Provider ID、名称、model_provider 和全部其他设置，不影响其历史会话关联；不使用旧备份覆盖，也不重置 API Key。"
+                : "No Python required. Backs up the current file and removes only base_url, model_catalog_url and experimental_bearer_token from Codex-LB providers. Keeps provider IDs, names, model_provider and every other setting, preserving provider references used by history; does not restore an old backup or reset any API key."
               : zh
                 ? "使用系统自带 Shell/awk 或 PowerShell，无需 Python。先备份 config.toml，再更新 Provider 与模型发现，token 直接保存在配置中。执行后请重启 Codex。"
                 : "Uses system shell/awk or PowerShell; no Python required. Backs up config.toml, updates the provider and model discovery, and saves the token inline. Restart Codex afterward."}
@@ -237,28 +236,11 @@ export function CodexConfigButton({ apiKeys }: { apiKeys: ApiKey[] }) {
                 readOnly
                 value={commands[platform]}
               />
-              <Button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(commands[platform]);
-                    setCopied(true);
-                  } catch {
-                    setError(
-                      zh
-                        ? "请手动复制命令。"
-                        : "Please copy the command manually.",
-                    );
-                  }
-                }}
-              >
-                {copied
-                  ? zh
-                    ? "已复制"
-                    : "Copied"
-                  : zh
-                    ? "复制命令"
-                    : "Copy command"}
-              </Button>
+              <CopyButton
+                key={platform}
+                value={commands[platform]}
+                label={zh ? "复制命令" : "Copy command"}
+              />
               <p className="text-sm">
                 {operation === "cleanup"
                   ? zh

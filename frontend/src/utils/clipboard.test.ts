@@ -2,23 +2,32 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { copyToClipboard } from "@/utils/clipboard";
 
-const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
-const originalIsSecureContext = Object.getOwnPropertyDescriptor(window, "isSecureContext");
-const originalExecCommand = Object.getOwnPropertyDescriptor(document, "execCommand");
+const originalClipboard = Object.getOwnPropertyDescriptor(
+  navigator,
+  "clipboard",
+);
+const originalIsSecureContext = Object.getOwnPropertyDescriptor(
+  window,
+  "isSecureContext",
+);
+const originalExecCommand = Object.getOwnPropertyDescriptor(
+  document,
+  "execCommand",
+);
 
 describe("copyToClipboard", () => {
   afterEach(() => {
     if (originalClipboard) {
       Object.defineProperty(navigator, "clipboard", originalClipboard);
-    }
+    } else Reflect.deleteProperty(navigator, "clipboard");
 
     if (originalIsSecureContext) {
       Object.defineProperty(window, "isSecureContext", originalIsSecureContext);
-    }
+    } else Reflect.deleteProperty(window, "isSecureContext");
 
     if (originalExecCommand) {
       Object.defineProperty(document, "execCommand", originalExecCommand);
-    }
+    } else Reflect.deleteProperty(document, "execCommand");
 
     vi.restoreAllMocks();
   });
@@ -36,6 +45,28 @@ describe("copyToClipboard", () => {
 
     await expect(copyToClipboard("hello")).resolves.toBe(true);
     expect(writeText).toHaveBeenCalledWith("hello");
+  });
+
+  it("still copies synchronously if Clipboard API throws before returning a promise", async () => {
+    const writeText = vi.fn(() => {
+      throw new Error("synchronous policy failure");
+    });
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(window, "isSecureContext", {
+      configurable: true,
+      value: true,
+    });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand,
+    });
+    const result = copyToClipboard("complete command");
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    await expect(result).resolves.toBe(true);
   });
 
   it("keeps the execCommand fallback synchronous when clipboard write is blocked", async () => {

@@ -16,7 +16,9 @@ function fallbackCopyToClipboard(
   }
 
   const previousActiveElement =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "");
@@ -29,6 +31,7 @@ function fallbackCopyToClipboard(
   container.appendChild(textarea);
   textarea.focus();
   textarea.select();
+  textarea.setSelectionRange(0, text.length);
 
   try {
     return document.execCommand("copy");
@@ -48,10 +51,21 @@ export async function copyToClipboard(
   text: string,
   options: CopyToClipboardOptions = {},
 ): Promise<boolean> {
-  const clipboardWritePromise =
-    window.isSecureContext && typeof navigator.clipboard?.writeText === "function"
-      ? navigator.clipboard.writeText(text).then(() => true).catch(() => false)
-      : null;
+  let clipboardWritePromise: Promise<boolean> | null = null;
+  try {
+    if (
+      window.isSecureContext &&
+      typeof navigator.clipboard?.writeText === "function"
+    ) {
+      clipboardWritePromise = navigator.clipboard
+        .writeText(text)
+        .then(() => true)
+        .catch(() => false);
+    }
+  } catch {
+    // Some browser/policy implementations throw before returning a promise.
+    // Still try the synchronous click-gesture fallback below.
+  }
 
   if (fallbackCopyToClipboard(text, options)) {
     if (clipboardWritePromise) {

@@ -57,7 +57,7 @@ function bashCommand(
     .map(([key, value]) => key + "=" + awkString(value))
     .join("; ");
   return [
-    "(",
+    "/bin/bash <<'CODEX_LB_BASH'",
     "set -eu",
     "umask 077",
     'codex_dir="${CODEX_HOME:-$HOME/.codex}"',
@@ -89,7 +89,7 @@ function bashCommand(
         ? "Codex-LB configured"
         : "Codex-LB settings removed; other settings retained") +
       '. Restart Codex."',
-    ")",
+    "CODEX_LB_BASH",
   ].join("\n");
 }
 function windowsCommand(

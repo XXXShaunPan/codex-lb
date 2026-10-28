@@ -49,7 +49,7 @@ jobs:
       - working-directory: frontend
         run: bun install --frozen-lockfile
       - working-directory: frontend
-        run: bun run test src/features/codex-config/commands.test.ts src/features/visitor-access/relay-access.test.tsx src/features/image-routing/image-settings.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/relay-routing/priority-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
+        run: bun run test src/features/codex-config/commands.test.ts src/features/codex-config/copy-command.test.tsx src/utils/clipboard.test.ts src/components/copy-button.test.tsx src/features/visitor-access/relay-access.test.tsx src/features/image-routing/image-settings.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/relay-routing/priority-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
       - working-directory: frontend
         run: bun run build
       # Keep the CLI used to validate the upstream spec baseline reproducible.

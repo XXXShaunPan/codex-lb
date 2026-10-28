@@ -191,29 +191,18 @@ function Set-RelayConfiguration {
 function Remove-RelayConfiguration {
     foreach($id in $Providers.Keys) {
         if(-not (Test-RelayProvider $id)) { continue }
-        $Removed[$id]=$true; $prefix='model_providers'+$Sep+$id
-        foreach($p in @($Fields.Keys)) {
-            if($p.StartsWith($prefix+$Sep+'auth'+$Sep) -and $Fields[$p].Contains('codex-lb.key')) { Remove-ConfigPrefix ($prefix+$Sep+'auth'); break }
+        $prefix='model_providers'+$Sep+$id
+        foreach($field in @('base_url','model_catalog_url','experimental_bearer_token')) {
+            $p=$prefix+$Sep+$field
+            if($Fields.Contains($p)) { $Fields.Remove($p); $Removed[$id]=$true; $Tables[$prefix]=$true }
         }
-        foreach($field in @('base_url','model_catalog_url','experimental_bearer_token','requires_openai_auth','wire_api','supports_websockets')) { $Fields.Remove($prefix+$Sep+$field) }
-        foreach($p in @($Fields.Keys)) {
-            $a=$p.Split([char]28)
-            if($a.Count -eq 4 -and $a[0] -ceq 'model_providers' -and $a[1] -ceq $id -and $a[2] -ceq 'http_headers' -and $a[3] -ieq 'x-openai-actor-authorization' -and (Read-ConfigString $Fields[$p]) -ceq 'codex-lb') { $Fields.Remove($p) }
-        }
-        $remaining=@($Fields.Keys | Where-Object { $_.StartsWith($prefix+$Sep) -and $_ -cne ($prefix+$Sep+'name') })
-        $remaining+=@($Tables.Keys | Where-Object { $_.StartsWith($prefix+$Sep) -and $_ -cnotin @(($prefix+$Sep+'http_headers'),($prefix+$Sep+'env_http_headers')) })
-        if($remaining.Count -eq 0) { Remove-ConfigPrefix $prefix }
     }
-    if($Removed.Count -gt 0 -and $State.Discovery -ceq 'owned') { $Fields.Remove($DiscoveryKey); $State.Discovery='' }
-    elseif($Removed.Count -gt 0 -and $State.Discovery -ceq 'was-false') { $Fields[$DiscoveryKey]='false'; $State.Discovery='' }
 }
 function Write-ConfigDocument {
     if($RelaySettings.mode -ceq 'cleanup' -and $Removed.Count -eq 0) { return $Original }
     $lines=[Collections.Generic.List[string]]::new()
     foreach($record in $Records) {
         if($RelaySettings.mode -ceq 'setup' -and $record.path -cin @('model','model_provider')) { continue }
-        $a=$record.path.Split([char]28)
-        if($RelaySettings.mode -ceq 'cleanup' -and ($record.path -ceq 'model_provider' -or ($a.Count -eq 3 -and $a[0] -ceq 'profiles' -and $a[2] -ceq 'model_provider')) -and $Removed.Contains((Read-ConfigString $record.value))) { continue }
         $lines.Add($record.text)
     }
     $lf=[string][char]10

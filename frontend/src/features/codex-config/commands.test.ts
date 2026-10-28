@@ -23,9 +23,11 @@ const token = "sk-clb-test-'\"$\\-中文";
 const baseUrl = "https://relay.example.test:8443/backend-api/codex";
 const windows = process.platform === "win32";
 const bash = windows ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+const zsh = "/bin/zsh";
 const runtimes = [
   ...(windows ? ["powershell"] : []),
   ...(existsSync(bash) ? ["posix"] : []),
+  ...(!windows && existsSync(zsh) ? ["zsh"] : []),
 ];
 const python =
   process.env.RELAY_TEST_PYTHON ??
@@ -73,8 +75,15 @@ function run(dir: string, runtime: string, cleanup = false) {
   expect(command).not.toMatch(
     /\b(python[23]?|node|pip|npx|curl|Invoke-WebRequest)\b/i,
   );
+  if (!win) {
+    expect(command.startsWith("/bin/bash <<'CODEX_LB_BASH'\n")).toBe(true);
+    expect(command.trimEnd().endsWith("CODEX_LB_BASH")).toBe(true);
+  }
   writeFileSync(script, command);
-  const env: NodeJS.ProcessEnv = { ...process.env, CODEX_HOME: win ? dir : unixPath(dir) };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    CODEX_HOME: win ? dir : unixPath(dir),
+  };
   if (windows)
     env.PATH = win
       ? process.env.SystemRoot + "/System32"
@@ -83,10 +92,14 @@ function run(dir: string, runtime: string, cleanup = false) {
     win
       ? process.env.SystemRoot +
           "/System32/WindowsPowerShell/v1.0/powershell.exe"
-      : bash,
+      : runtime === "zsh"
+        ? zsh
+        : bash,
     win
       ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script]
-      : [unixPath(script)],
+      : runtime === "zsh"
+        ? ["-f", unixPath(script)]
+        : [unixPath(script)],
     { env, encoding: "utf8", timeout: 30000 },
   );
 }
@@ -147,7 +160,7 @@ const unrelated =
   '\n# keep unrelated settings\n[projects."/my/project"]\ntrust_level="trusted"\nnote="""[model_providers.fake]\n# not a comment\nmodel_provider = \'not-a-provider\'"""\n[mcp_servers.local]\ncommand="my-tool"\nargs=["--flag", # preserve array semantics\n"two"]\n';
 
 describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
-  it("removes legacy key-file auth fields without deleting credential files", () => {
+  it("retains legacy provider identity and auth fields while removing only its URL", () => {
     const dir = mkdtempSync(join(tmpdir(), "relay-legacy-"));
     try {
       writeFileSync(
@@ -158,7 +171,17 @@ describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
       const result = run(dir, runtime, true);
       expect(result.status, result.stderr).toBe(0);
       expect(parseToml(readFileSync(join(dir, "config.toml"), "utf8"))).toEqual(
-        { model: "keep-model" },
+        {
+          model: "keep-model",
+          model_provider: "codex_lb",
+          model_providers: {
+            codex_lb: {
+              name: "Codex LB",
+              wire_api: "responses",
+              auth: { command: "sh", args: ["-c", "cat codex-lb.key"] },
+            },
+          },
+        },
       );
       expect(readFileSync(join(dir, "codex-lb.key"), "utf8")).toBe("keep-file");
     } finally {
@@ -219,7 +242,7 @@ describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
         const afterText = readFileSync(join(dir, "config.toml"), "utf8");
         const after = parseToml(afterText);
         expect(after.model).toBe("gpt-6-astra");
-        expect(after.model_provider).toBeUndefined();
+        expect(after.model_provider).toBe(fixture.provider);
         expect(after.newer.keep).toBe("added after setup");
         expect(after.projects).toEqual(before.projects);
         expect(after.mcp_servers).toEqual(before.mcp_servers);
@@ -239,13 +262,13 @@ describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
             request_max_retries: 7,
           });
         expect(after.features?.api_key_model_discovery).toBe(
-          before.features?.api_key_model_discovery,
+          parsed.features?.api_key_model_discovery,
         );
         expect(
           after.model_providers?.[fixture.provider]?.http_headers?.[
             "x-openai-actor-authorization"
           ],
-        ).toBeUndefined();
+        ).toBe("codex-lb");
         if (
           fixture.name === "inline tables" ||
           fixture.name === "nested headers"
@@ -253,6 +276,16 @@ describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
           expect(
             after.model_providers[fixture.provider].http_headers["X-Keep"],
           ).toBe("keep");
+        const expected = parseToml(newer);
+        for (const field of [
+          "base_url",
+          "model_catalog_url",
+          "experimental_bearer_token",
+        ]) {
+          delete expected.model_providers[fixture.provider][field];
+        }
+        // Every other value (including provider/history selectors) is invariant.
+        expect(after).toEqual(expected);
         const count = backups().length;
         expect(run(dir, runtime, true).status).toBe(0);
         expect(readFileSync(join(dir, "config.toml"), "utf8")).toBe(afterText);
@@ -275,19 +308,45 @@ describe.each(runtimes)("native Codex editor (%s)", (runtime) => {
       expect(result.status, result.stderr).toBe(0);
       const parsed = parseToml(readFileSync(join(dir, "config.toml"), "utf8"));
       expect(parsed.model).toBe("my-model");
-      expect(parsed.model_provider).toBeUndefined();
+      expect(parsed.model_provider).toBe("mine");
       expect(parsed.model_providers.other).toEqual(
         parseToml(original).model_providers.other,
       );
-      expect(parsed.profiles.test).toEqual({ model: "keep-profile" });
+      expect(parsed.profiles.test).toEqual({
+        model_provider: "mine",
+        model: "keep-profile",
+      });
       expect(parsed.features.api_key_model_discovery).toBe(true);
       expect(readFileSync(join(dir, "auth.json"), "utf8")).toBe(
         '{"unchanged":true}',
       );
+      const expected = parseToml(original);
+      delete expected.model_providers.mine.base_url;
+      delete expected.model_providers.mine.experimental_bearer_token;
+      expect(parsed).toEqual(expected);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   }, 60000);
+
+  it("keeps a dotted provider table even when the removed URL was its only field", () => {
+    const dir = mkdtempSync(join(tmpdir(), "relay-provider-id-"));
+    try {
+      writeFileSync(
+        join(dir, "config.toml"),
+        'model_provider="mine"\nmodel_providers.mine.base_url="' +
+          baseUrl +
+          '"\n',
+      );
+      const result = run(dir, runtime, true);
+      expect(result.status, result.stderr).toBe(0);
+      expect(parseToml(readFileSync(join(dir, "config.toml"), "utf8"))).toEqual(
+        { model_provider: "mine", model_providers: { mine: {} } },
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   it.each([
     "",

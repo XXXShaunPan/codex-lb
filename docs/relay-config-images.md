@@ -9,6 +9,7 @@
 重置任何旧 Key。API Key 原有的“重新生成”操作也会同步更新 token 池。
 
 选择 macOS/Linux 的 Bash 或 Windows 的 PowerShell 命令后复制执行。
+Bash 命令以 `/bin/bash` 和带引号的 heredoc 开头，粘贴到 zsh 时也由 Bash 执行。
 使用系统自带 Shell/awk 或 Windows PowerShell 5.1+，无需安装 Python、Node 或库。
 命令使用当前网站地址，更新当前自定义
 Provider（没有则创建 `openai_https`），把 token 直接写进 config.toml，启用
@@ -22,14 +23,23 @@ Provider（没有则创建 `openai_https`），把 token 直接写进 config.tom
 
 - 识别带有 Codex-LB actor header、本站地址，或 Codex backend 地址配合
   `sk-clb-` token / 旧版 `codex-lb.key` 读取器的 Provider。
-- 移除这些 Provider 的 `base_url`、`model_catalog_url`、token、专属请求头和
-  连接覆盖项，以及指向它们的 `model_provider` 选择；其他请求头仍保留。
-- 保留模型、MCP、项目、其他 Provider 和后来新增的配置。通用模型发现开关若
-  原本存在则保留；新生成器添加/覆盖的开关有注释标记，可清理或恢复原有 false。
+- 仅移除这些 Provider 的 `base_url`、`model_catalog_url` 和
+  `experimental_bearer_token` 三个字段。
+- Provider ID、名称、根级/配置档中的 `model_provider` 选择全部保留，
+  以维持历史会话使用的 Provider 引用；不读取或修改聊天历史文件。
+- 请求头、auth、wire_api、其他连接参数、features、模型、MCP、项目和
+  其他 Provider 均不改变。不再删除旧版密钥文件式 auth 配置。
 - 清理前也备份；无需选择或重置 API Key；不修改 `auth.json`。执行后重启 Codex。
 
 备份仍可供手动回退，但无法恢复已被服务端重置的旧 Key。
 原先的 `codex-lb.key` 文件不再用于新配置，不会被自动删除。
+
+“复制命令”使用通用复制组件：HTTP 页面通过弹窗内部的同步复制方式兼容，
+安全上下文也支持 Clipboard API；切换操作系统后重新显示可复制状态。
+若浏览器或组织策略同时禁止所有复制机制，会明确提示失败，不绕过安全策略。
+
+如果此前执行旧版恢复命令已删除 Provider，新命令不会猜测原 ID。
+需从本地备份中恢复相同 Provider 定义/选择项，再按需移除上述三个覆盖字段。
 
 管理员与访客均可使用；访客仅能导出分配给自己的有效 Key。普通 Key 列表不会
 泄露 token。token 按要求明文保存在服务数据库和客户端配置内，因此应限制数据库、

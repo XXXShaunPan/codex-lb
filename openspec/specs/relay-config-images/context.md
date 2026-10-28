@@ -14,7 +14,7 @@ old clients; removing relay configuration does not undo a server-side key reset.
 Database and backup access now grants access to saved tokens. Protect both,
 along with generated commands and config.toml, as credentials.
 
-The generated commands use POSIX shell/awk or built-in PowerShell 5.1+; no client
+The generated commands explicitly invoke /bin/bash with awk, or built-in PowerShell 5.1+; no client
 Python, Node, package installation, downloaded executable or configuration upload.
 It derives URLs from the web origin, updates the active custom provider or
 `openai_https`, stores the token inline, enables model discovery and retains
@@ -23,12 +23,17 @@ creates no redundant backup. The legacy key file is left untouched but no
 longer used by the configured provider.
 
 Restore means targeted cleanup, not replacing the file with a historical backup.
-Only positively identified relay provider fields/selectors are removed, including
-legacy key-file auth readers. User models, MCP, projects, other providers and
-unrelated headers survive. Existing generic discovery flags remain; new ownership
-comments distinguish flags introduced by setup or overridden from false. Both
-operations keep timestamped backups and atomically replace the prepared result.
+Only base_url, model_catalog_url and experimental_bearer_token are removed from
+identified relay providers. Provider IDs/names, root/profile selectors, headers,
+legacy auth readers, transport options and all feature flags remain unchanged.
+History files are not accessed. If an earlier restore already removed a provider,
+its original identity must be recovered from the user's backup rather than guessed.
+Both operations keep timestamped backups and atomically replace the prepared result.
 The native command tests use tomllib solely as an independent development oracle.
+
+The command button uses the shared dialog-aware CopyButton. Its fallback remains
+synchronous with the click gesture, copies within the active focus trap on HTTP,
+and does not promise success when all browser clipboard mechanisms are denied.
 
 The native-only commands and targeted cleanup were deployed on 2026-10-28 after
 macOS/Ubuntu/Windows CI and administrator/visitor browser verification. Only the
