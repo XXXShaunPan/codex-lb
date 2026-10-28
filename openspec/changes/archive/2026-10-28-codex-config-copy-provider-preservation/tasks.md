@@ -1,0 +1,5 @@
+- [x] Fix command copy using the shared dialog-safe clipboard control and test failures.
+- [x] Preserve provider identity and all fields except the three requested overrides.
+- [x] Add explicit /bin/bash launcher and execute from zsh.
+- [x] Verify native fixtures, browser clipboard, production build and cloud CI.
+- [x] Deploy frontend without restarting service; sync documentation and archive.

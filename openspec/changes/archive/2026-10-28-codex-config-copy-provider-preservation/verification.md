@@ -25,7 +25,26 @@
 | Preserve provider identity; remove three fields only | edit_config.awk and edit_config.ps1 cleanup | Whole-document TOML comparisons, dotted empty provider, legacy auth and no-op tests |
 | One-click command copying | shared CopyButton and clipboard.ts | copy-command.test.tsx, clipboard.test.ts and real HTTP browser clipboard checks |
 
-The implementation follows the design: shared clipboard behavior, minimal
-native cleanup changes, and no dependency or authentication changes. History
-files and real user configuration were not inspected or modified. Cross-platform
-cloud CI and frontend deployment are still pending; do not archive yet.
+## Cloud and deployment checks
+
+- Code commit `0421ed7ef5f7943b3ea0a9bf3e707fc4f0f4f47d` passed all four jobs
+  in [Relay fork checks](https://github.com/XXXShaunPan/codex-lb/actions/runs/40646617842):
+  the native relay regression gate and native command tests on Ubuntu, macOS
+  (including /bin/zsh) and Windows.
+- Frontend assets were deployed additively, then the HTML entry was replaced
+  atomically. Live HTML and the commands bundle matched the verified build.
+  Backup: `C:\Users\cncb_choice\Desktop\.codex-lb\backups\frontend-config-copy-20261028T145754`.
+  Older hashed assets remain available for open tabs and rollback.
+- Both administrator and visitor browser clipboard scenarios passed again
+  against the production-served assets on port 8080. API data was mocked, so
+  these checks did not rotate or export a real key.
+- Readiness returned HTTP 200; service process ID stayed 7240. There was no
+  service restart, database migration or server Key mutation.
+
+## Final assessment
+
+All five tasks and all three requirements are covered. The implementation follows
+the design: shared clipboard behavior, minimal native cleanup changes, and no
+dependency or authentication changes. History files and real user configuration
+were not inspected or modified. Main specs and user documentation are synchronized.
+No outstanding critical, warning or coherence findings; ready for archive.

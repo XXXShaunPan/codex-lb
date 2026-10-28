@@ -38,6 +38,11 @@ and does not promise success when all browser clipboard mechanisms are denied.
 The native-only commands and targeted cleanup were deployed on 2026-10-28 after
 macOS/Ubuntu/Windows CI and administrator/visitor browser verification. Only the
 frontend resources changed, with no service restart or server Key mutation.
+The same day's follow-up preserves provider identity and removes exactly three
+overrides, adds an explicit Bash launcher tested from zsh, and verifies actual
+one-click clipboard copying at an insecure HTTP origin. Code commit `0421ed7e`
+passed [the four-job relay gate](https://github.com/XXXShaunPan/codex-lb/actions/runs/40646617842)
+and the administrator/visitor browser checks against production-served assets.
 
 The public `gpt-image-2` model remains independent of the Responses host.
 `/api/image-routing/settings` is admin-only. An empty host selects from the
