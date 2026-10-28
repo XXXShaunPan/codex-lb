@@ -45,6 +45,7 @@ from app.core.middleware.request_body_limit import (
 )
 from app.core.multipart import MultipartPayloadTooLarge
 from app.core.runtime_logging import log_error_response
+from app.core.validation_diagnostics import log_validation_diagnostic
 from app.modules.proxy.images_observability import (
     IMAGE_ROUTE_MODEL_STATE,
     IMAGE_ROUTE_STARTED_AT_STATE,
@@ -316,6 +317,7 @@ def add_exception_handlers(app: FastAPI) -> None:
             if exc.errors():
                 first = exc.errors()[0]
                 loc = first.get("loc", [])
+                log_validation_diagnostic(loc, first["type"], source="framework")
                 if isinstance(loc, (list, tuple)):
                     param = ".".join(str(part) for part in loc if part != "body")
                     if param:
@@ -325,7 +327,7 @@ def add_exception_handlers(app: FastAPI) -> None:
                 request,
                 400,
                 "invalid_request_error",
-                first_message or "Invalid request payload",
+                "Invalid request payload",
                 category="openai_error_response",
             )
             await _record_image_route_exception_observability(

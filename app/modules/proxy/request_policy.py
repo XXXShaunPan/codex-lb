@@ -26,6 +26,7 @@ from app.core.openai.v1_requests import V1ResponsesRequest
 from app.core.types import JsonValue
 from app.core.utils.json_guards import is_json_list, is_json_mapping
 from app.core.utils.request_id import get_request_id
+from app.core.validation_diagnostics import log_validation_diagnostic
 from app.db.models import ModelSource
 from app.modules.api_keys.service import ApiKeyData
 from app.modules.model_sources.catalog import source_model_reasoning_levels
@@ -809,9 +810,11 @@ def _resolve_reasoning_effort_fallback(
 
 def openai_validation_error(exc: ValidationError) -> OpenAIErrorEnvelope:
     error = openai_invalid_payload_error()
-    if exc.errors():
-        first = exc.errors()[0]
+    errors = exc.errors(include_input=False, include_context=False, include_url=False)
+    if errors:
+        first = errors[0]
         loc = first.get("loc", [])
+        log_validation_diagnostic(loc, first["type"], source="pydantic")
         if isinstance(loc, (list, tuple)):
             param = ".".join(str(part) for part in loc if part != "body")
             if param:
@@ -832,6 +835,7 @@ def openai_client_payload_error(exc: ClientPayloadError) -> OpenAIErrorEnvelope:
     Falls back to ``openai_invalid_payload_error`` for legacy callsites
     that raise ``ClientPayloadError`` without ``code`` / ``error_type``.
     """
+    log_validation_diagnostic(exc.param or "", "client_payload_error", source="client_payload")
     if exc.code is None and exc.error_type is None:
         return openai_invalid_payload_error(exc.param)
     code = exc.code or "invalid_request_error"

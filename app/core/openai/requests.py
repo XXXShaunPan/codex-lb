@@ -21,6 +21,7 @@ from app.core.openai.exceptions import ClientPayloadError
 from app.core.openai.tool_call_safety import is_downstream_side_effect_tool_call_item
 from app.core.types import JsonObject, JsonValue
 from app.core.utils.json_guards import is_json_list, is_json_mapping
+from app.core.validation_diagnostics import log_rejected_include
 
 type MutableJsonObject = dict[str, JsonValue]
 
@@ -696,6 +697,7 @@ class ResponsesRequest(BaseModel):
     def _validate_include(cls, value: list[str]) -> list[str]:
         for entry in value:
             if entry not in _RESPONSES_INCLUDE_ALLOWLIST:
+                log_rejected_include(entry)
                 raise ValueError(f"Unsupported include value: {entry}")
         return value
 
