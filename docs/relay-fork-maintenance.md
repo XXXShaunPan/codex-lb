@@ -25,6 +25,39 @@ Remove the legacy injection `PYTHONPATH` and feature-enable variables. Keep
 explicit recovery/telemetry preferences. `X-Relay-Version` identifies the
 custom deployment independently of the upstream app version.
 
+## Production checkout and disposable maintenance directories
+
+The Windows deployment uses `codex-lb-custom` as its application checkout and
+keeps its own `.venv`, editable installation, and console launcher there.
+`codex-lb-native-config` was a temporary maintenance checkout, not a runtime
+dependency. Before removing such a checkout, publish verified source changes,
+synchronize tests and records, and ensure the production checkout has an
+independent, usable `.git` directory on `custom/main` rather than a stale
+worktree pointer or an object database shared with the disposable checkout.
+
+From the production directory, useful read-only checks are:
+
+```powershell
+.venv/Scripts/python.exe -I -B -c "import app, sys; print(sys.executable); print(app.__file__)"
+git symbolic-ref --short HEAD
+git rev-parse --show-toplevel --git-common-dir
+git status --short
+git fsck --connectivity-only
+```
+
+Package resolution must stay inside the production checkout; the base Python
+interpreter and uv executable may legitimately live in the shared uv runtime
+outside both checkout directories. Preserve those shared tools, `.codex-lb`
+data, service configuration, encryption material, saved tokens, and the
+production `app/static` assets. They are not part of disposable-clone cleanup.
+An active editor/agent task whose working directory is the old checkout should
+be switched to `codex-lb-custom` before that old folder is removed.
+
+Repository consolidation does not require reinstalling a correctly rooted
+environment or restarting a healthy service. Keep historical deployment
+helpers as local backups, not as hard-coded dependencies of the production
+checkout. Never publish databases, credentials, environments, or service logs.
+
 ## Database cutover
 
 Stop the service before the final backup/cutover. Back up `store.db`,

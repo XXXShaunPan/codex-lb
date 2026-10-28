@@ -38,3 +38,21 @@ authoritatively supplied. This deployment does not infer a provider invoice
 from the customer tariff or fabricate price versions for historical rows.
 The [operations runbook](../../../docs/relay-fork-maintenance.md) covers future
 merge-based upgrades, migration validation, live probes and rollback.
+
+## Independent production checkout
+
+The Windows service and its editable Python installation resolve to
+`codex-lb-custom`. The temporary `codex-lb-native-config` checkout is not an
+application runtime dependency. On 2026-10-28, verified include-compatibility
+and diagnostic changes were published, tests/specifications were synchronized,
+and the production directory's stale worktree pointer was replaced by
+self-contained Git metadata on `custom/main`. The existing runtime source,
+environment, assets, data, and running service were preserved.
+
+A disposable maintenance clone can be removed only after its unique source
+changes are published and the independent production checkout is verified.
+The shared uv/Python installation and `.codex-lb` service/data directory remain
+required. Keep historical helpers and pointer backups outside Git, and switch
+any editor or agent workspace away from the disposable directory before
+deleting it. See the operations runbook's production-checkout section for
+read-only import and repository checks.
