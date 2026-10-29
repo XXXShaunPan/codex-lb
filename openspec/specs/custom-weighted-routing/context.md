@@ -14,33 +14,33 @@ zero. The virtual-pool first-source fallback is disabled for this strategy.
 Source-only embeddings also use the same weights, with subscription accounts
 excluded from their candidate pool.
 
-The priority extension stores full plan/account rules in `relay_routing_rules`
-and persistent per-account quota bands in `relay_routing_quota_bands`. Lower
-numbers win; default Plus is 10/30 and all others 20/20. Only the best eligible
-group reaches the random draw. Account overrides replace the entire plan rule;
-removing the override restores inheritance. Band decisions happen outside the
-balancer runtime lock, using normalized reported windows and transaction-owned
-DB sessions. SQLite writer serialization / PostgreSQL row locks protect band
-transitions. Older observations cannot reverse newer transitions. A changed
-threshold/basis fingerprint re-evaluates the band under the new rule.
+The flat-pool follow-up retires the priority extension from assignment. Every
+eligible account competes by `weight * minimum_known_remaining_fraction`, with
+probability equal to its score divided by the total score. This is a random draw,
+not an argmax: weight 2 at 50% and weight 1 at 100% have equal probability across
+plans. ent26 uses its upstream monthly allowance; different dollar limits do not
+change a percentage score. A Model Source remains at a 100% placeholder until
+provider polling is implemented.
 
-Unknown requested quota demotes ordinary accounts. No known applicable quota
-means no new allocation; a confirmed absent short window is ignored in minimum
+Legacy `relay_routing_rules` and `relay_routing_quota_bands` records are retained,
+but neither native nor mixed-source assignment reads or updates them. The admin
+rules APIs are deprecated storage compatibility only, and their UI editors are
+removed. No migration or destructive data cleanup is required.
+
+No known applicable quota means no new allocation; a confirmed absent short window is ignored in minimum
 mode. Source placeholders are explicitly labeled, including in account details.
 Mixed source/real routing removes real accounts at their hard concurrency cap
-before choosing a priority group. Already-owned requests bypass new-allocation
+before the probability draw. Already-owned requests bypass new-allocation
 policy, but retain hard security, capability and availability checks.
 
-Validation covers routing, concurrency, source dispatch, visitor isolation,
-billing, priority rules, persistent hysteresis, stale observations, and the new
-API/migrations. Fifty-nine frontend cases and the production build passed.
-Migration tests start from the prior
-head, preserve existing rows, verify default weights, repeat upgrade, downgrade
-and upgrade again. Non-finite JSON numbers, boolean values, deleted accounts
-and visitor access are rejected.
+Regression tests cover cross-plan probabilities, lower-score wins, current quota
+minima, ent26 allowance normalization, native/mixed-source paths, inert saved
+rules, zero/unknown quota, continuity and hard availability constraints. Legacy
+API validation and visitor restrictions remain enforced.
 
-This release was prepared in an isolated worktree. Production was deliberately
-left on the previous checkout and process. The manual activation script checks
+The follow-up is prepared as local source changes with isolated test databases
+and frontend output. It does not restart the production process, publish static
+assets, change live settings or rotate credentials. The manual activation script checks
 a committed tag and hashed frontend build before stopping the service; its
 `-CheckOnly` mode is read-only. See the
 [operator guide](../../../docs/custom-weighted-routing.md) for activation and

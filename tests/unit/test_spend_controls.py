@@ -102,8 +102,30 @@ def test_summary_drops_obsolete_subscription_windows_but_not_history():
     assert summary.spend_control.budget_only
     assert summary.usage.primary_remaining_percent is None
     assert summary.usage.secondary_remaining_percent is None
+    assert summary.usage.monthly_remaining_percent == pytest.approx(58.33436924219131)
+    assert summary.reset_at_monthly.isoformat() == "2026-11-01T00:00:00+00:00"
+    assert summary.window_minutes_monthly is None
+    assert summary.capacity_credits_monthly is None
+    assert summary.remaining_credits_monthly is None
     assert summary.window_minutes_primary is None
     assert old.used_percent == 0
+
+
+def test_monthly_percentage_and_reset_remain_unknown_without_upstream_values():
+    account = account_with_budget()
+    account.spend_control_snapshot.payload_json = SpendControlSnapshot(
+        control=SpendControlPayload(reached=False)
+    ).model_dump_json()
+    summary = build_account_summaries(
+        accounts=[account],
+        primary_usage={},
+        secondary_usage={},
+        encryptor=TokenEncryptor(),
+        include_auth=False,
+    )[0]
+    assert summary.usage.monthly_remaining_percent is None
+    assert summary.reset_at_monthly is None
+    assert summary.window_minutes_monthly is None
 
 
 @pytest.mark.parametrize("strategy", ["round_robin", "usage_weighted", "custom_weighted_quota"])

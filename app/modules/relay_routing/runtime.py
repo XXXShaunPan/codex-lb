@@ -1,3 +1,5 @@
+"""Legacy priority diagnostics; request allocation no longer calls this module."""
+
 from __future__ import annotations
 
 import math

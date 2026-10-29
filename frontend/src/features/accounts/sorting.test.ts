@@ -1,10 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_ACCOUNT_SORT_MODE, sortAccountsForDisplay } from "@/features/accounts/sorting";
 import type { AccountSummary } from "@/features/accounts/schemas";
 import { createAccountSummary } from "@/test/mocks/factories";
 
 const BOTH = "both";
+
+it("sorts ent26 by its monthly reset even without a synthetic duration", () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-29T00:00:00Z"));
+  try {
+    const monthly = createAccountSummary({accountId:"monthly", planType:"ent26",
+      usage:{primaryRemainingPercent:null,secondaryRemainingPercent:null,monthlyRemainingPercent:58},
+      windowMinutesPrimary:null,windowMinutesSecondary:null,windowMinutesMonthly:null,
+      resetAtPrimary:null,resetAtSecondary:null,resetAtMonthly:"2026-11-01T00:00:00Z"});
+    const weekly = createAccountSummary({accountId:"weekly",resetAtPrimary:null,resetAtSecondary:"2026-11-04T00:00:00Z"});
+    expect(sortAccountsForDisplay([weekly,monthly], "both", "reset_soonest").map(a=>a.accountId)).toEqual(["monthly","weekly"]);
+    expect(sortAccountsForDisplay([monthly,weekly], "both", "reset_latest").map(a=>a.accountId)).toEqual(["weekly","monthly"]);
+  } finally { clock.mockRestore(); }
+});
 
 describe("sortAccountsForDisplay — most_reset_credits", () => {
   it("uses most reset credits as the default sort mode", () => {

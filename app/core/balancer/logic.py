@@ -156,6 +156,7 @@ class AccountState:
     # Reported quota before inflight and token-lease pressure are added.
     quota_used_percent: float | None = None
     quota_secondary_used_percent: float | None = None
+    # Legacy diagnostic fields; custom_weighted_quota intentionally ignores them.
     routing_priority: int | None = None
     routing_remaining_fraction: float | None = None
     routing_allow_new: bool = True

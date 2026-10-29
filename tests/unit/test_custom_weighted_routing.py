@@ -1,3 +1,5 @@
+import random
+from collections import Counter
 from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -12,7 +14,7 @@ from app.modules.proxy._load_balancer.sticky_selection import (
 )
 from app.modules.proxy._load_balancer.types import RuntimeState
 from app.modules.proxy.load_balancer import _build_states
-from app.modules.relay_routing.selection import effective_weight
+from app.modules.relay_routing.selection import effective_weight, select_weighted_quota
 
 
 @pytest.mark.asyncio
@@ -131,6 +133,64 @@ def test_reported_quota_is_used_instead_of_synthetic_pressure():
         leased_tokens=100000,
     )
     assert effective_weight(state) == 1.5
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected",
+    [
+        ({"used_percent": 20, "secondary_used_percent": 70}, 0.3),
+        ({"used_percent": 70, "secondary_used_percent": 20}, 0.3),
+        ({"used_percent": 20, "spend_control_remaining_percent": 30}, 0.3),
+        ({"used_percent": 90, "spend_control_remaining_percent": 30}, 0.1),
+        (
+            {
+                "spend_control_budget_only": True,
+                "spend_control_remaining_percent": 58,
+                "used_percent": 100,
+                "secondary_used_percent": 100,
+            },
+            0.58,
+        ),
+        ({"spend_control_budget_only": True, "spend_control_remaining_percent": None, "used_percent": 0}, 0),
+        ({"spend_control_remaining_percent": float("nan"), "used_percent": 0}, 0),
+        ({"spend_control_remaining_percent": 120}, 1),
+        ({"spend_control_remaining_percent": -1}, 0),
+    ],
+)
+def test_minimum_of_reported_windows_and_monthly_budget(kwargs, expected):
+    assert effective_weight(account(**kwargs)) == pytest.approx(expected)
+
+
+def test_source_quota_is_a_full_placeholder_not_a_plan_capacity():
+    assert effective_weight(account("model-source:compass", routing_weight=3)) == 3
+
+
+def test_saved_priority_and_low_band_cannot_override_current_quota():
+    state = account(
+        plan_type="plus",
+        used_percent=80,
+        secondary_used_percent=10,
+        routing_weight=2,
+        routing_priority=9999,
+        routing_remaining_fraction=0,
+        routing_allow_new=False,
+    )
+    assert effective_weight(state) == pytest.approx(0.4)
+
+
+def test_random_distribution_includes_lower_scores_and_different_plans(monkeypatch):
+    states = [
+        account("plus", plan_type="plus", used_percent=50, routing_weight=2),
+        account("ent26", plan_type="ent26", spend_control_budget_only=True, spend_control_remaining_percent=100),
+        account("model-source:compass", routing_weight=0.5),
+    ]
+    # A fixed PRNG makes the regression deterministic, without replacing the
+    # production proportional sampler or relying on small-sample exact ratios.
+    monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", random.Random(20261029).choices)
+    counts = Counter(select_weighted_quota(states).account_id for _ in range(10000))
+    assert 0.38 < counts["plus"] / 10000 < 0.42
+    assert 0.38 < counts["ent26"] / 10000 < 0.42
+    assert 0.18 < counts["model-source:compass"] / 10000 < 0.22
 
 
 @pytest.mark.parametrize(

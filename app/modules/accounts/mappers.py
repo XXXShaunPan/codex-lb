@@ -258,6 +258,16 @@ def _account_to_summary(
         reset_at_primary = None
         window_minutes_primary = None
 
+    if plan_type == "ent26" and spend_control is not None:
+        # Presentation projection only: keep upstream snapshots independent of
+        # subscription history, without inventing a duration or dollar/credit rate.
+        monthly_remaining_percent = spend_control.remaining_percent
+        reset_at_monthly = spend_control.reset_at
+        window_minutes_monthly = None
+        capacity_monthly = remaining_credits_monthly = None
+        if spend_control.budget_only:
+            capacity_primary = capacity_secondary = None
+
     return AccountSummary(
         account_id=account.id,
         chatgpt_account_id=account.chatgpt_account_id,

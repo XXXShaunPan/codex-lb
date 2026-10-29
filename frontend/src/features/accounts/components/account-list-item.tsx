@@ -10,7 +10,7 @@ import { useDateDisplayFormatStore } from "@/hooks/use-date-format";
 import { useSmoothPercent } from "@/hooks/use-smooth-percent";
 import { StatusBadge } from "@/components/status-badge";
 import { MiniQuotaBar } from "@/components/mini-quota-bar";
-import { SpendControlQuota } from "./spend-control-quota";
+import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import type {
   AccountRoutingPolicy,
   AccountSummary,
@@ -59,23 +59,22 @@ export function AccountListItem({
   const primary = primaryState.percent;
   const secondary = secondaryState.percent;
   const monthly = monthlyState.percent;
+  const budgetOnly = account.spendControl?.budgetOnly === true;
   const hasPrimaryWindow =
-    account.windowMinutesPrimary != null ||
+    !budgetOnly && (account.windowMinutesPrimary != null ||
     primary !== null ||
     account.resetAtPrimary != null ||
-    primaryState.everKnown;
+    primaryState.everKnown);
   const hasSecondaryWindow =
-    account.windowMinutesSecondary != null ||
+    !budgetOnly && (account.windowMinutesSecondary != null ||
     secondary !== null ||
     account.resetAtSecondary != null ||
-    secondaryState.everKnown;
+    secondaryState.everKnown);
   const hasMonthlyWindow =
-    account.windowMinutesMonthly != null ||
-    monthly !== null ||
-    account.resetAtMonthly != null ||
+    hasMonthlyQuota(account) ||
     monthlyState.everKnown;
   const monthlyOnly = hasMonthlyWindow && !hasPrimaryWindow && !hasSecondaryWindow;
-  const showMonthlyRow = !account.spendControl?.budgetOnly && monthlyOnly;
+  const showMonthlyRow = hasMonthlyWindow;
   const showPrimaryRow =
     !account.spendControl?.budgetOnly && !monthlyOnly && hasPrimaryWindow && (quotaDisplay !== "weekly" || !hasSecondaryWindow);
   const showSecondaryRow =
@@ -140,7 +139,6 @@ export function AccountListItem({
           visibleQuotaRows > 1 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1",
         )}
       >
-        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
         {showMonthlyRow ? (
           <MiniQuotaRow
             label={t("common.quota.monthly")}

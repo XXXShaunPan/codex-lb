@@ -23,16 +23,19 @@ Older observations MUST NOT replace newer snapshots.
 - **WHEN** two local accounts share a workspace and have different spending limits
 - **THEN** each account retains only its own returned budget
 
-### Requirement: Display actual spending budgets
-Account APIs and list, card and detail surfaces SHALL expose the upstream unit,
-limit, used, remaining, remaining percentage, reset time and observation time.
-Unknown values MUST remain unknown. Budget-only accounts MUST NOT show synthetic
-5h or weekly windows or turn dollar balances into subscription credits.
+### Requirement: Monthly enterprise quota presentation
+Account summaries SHALL expose ent26's upstream remaining percentage and reset
+time through the existing monthly usage/reset fields. List, dashboard card and
+detail surfaces SHALL render monthly percentage/reset with normal quota styling,
+without a separate monetary spending-budget panel. Unknown values MUST remain
+unknown. Budget-only accounts MUST NOT show synthetic 5h/weekly quotas or convert
+money into subscription credits. No fixed monthly duration SHALL be fabricated.
+Raw spendControl API data MAY remain for compatibility.
 
-#### Scenario: Different configured allowances
-- **WHEN** one account has a USD 200 limit and another has a USD 50 limit
-- **THEN** the views show each actual allowance and remaining amount
-- **AND** reset/observation timestamps use the normal dashboard datetime contract
+#### Scenario: Monthly ent26 allowance
+- **WHEN** ent26 reports 58% remaining and an upstream reset timestamp
+- **THEN** all three account surfaces show monthly 58% and that reset time
+- **AND** no spending-budget amount, 5h or weekly row is shown for budget-only accounts
 
 ### Requirement: Respect exhausted spending controls
 Account selection SHALL exclude an account with an explicit reached control or
@@ -46,11 +49,16 @@ This filter MUST NOT alter account authentication, operator status or permission
 - **AND** a later successful observation with available budget makes it eligible again
 
 ### Requirement: Budget-aware quota-weighted selection
-For budget-only accounts, quota-weighted routing SHALL use the actual budget
-remaining percentage independently of subscription-window basis settings.
-Existing priority, weight and low-quota hysteresis rules SHALL remain in effect.
+For budget-only accounts, custom weighted routing SHALL use actual budget
+remaining percentage. For accounts with multiple applicable quota windows, the
+minimum known remaining percentage SHALL determine the score. Plan/account
+priorities, low-band admission and hysteresis MUST NOT affect this strategy.
 Missing budget values MUST NOT be treated as full capacity.
 
 #### Scenario: Budget-only account enters weighted pool
-- **WHEN** a budget-only account has positive budget and satisfies configured admission rules
+- **WHEN** a budget-only account has positive budget, positive custom weight and passes hard availability constraints
 - **THEN** it participates without a fabricated 5h or weekly quota
+
+#### Scenario: Different monetary allowance sizes
+- **WHEN** two budget-only accounts have equal remaining percentages and custom weights
+- **THEN** they have equal probability regardless of their monetary allowance sizes

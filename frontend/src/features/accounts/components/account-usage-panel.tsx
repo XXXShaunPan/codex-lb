@@ -3,7 +3,7 @@ import { Clock, Flame, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { SpendControlQuota } from "./spend-control-quota";
+import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import { cn } from "@/lib/utils";
 import type { AccountTrendChartProps } from "@/features/accounts/components/account-trend-chart";
 import type {
@@ -243,9 +243,10 @@ export function AccountUsagePanel({
   const monthly = monthlyState.percent;
   const requestUsage = account.requestUsage ?? null;
   const hasRequestUsage = (requestUsage?.requestCount ?? 0) > 0;
-  const hasPrimaryWindow = account.windowMinutesPrimary != null || primaryState.everKnown;
-  const hasSecondaryWindow = account.windowMinutesSecondary != null || secondaryState.everKnown;
-  const hasMonthlyWindow = account.windowMinutesMonthly != null || monthlyState.everKnown;
+  const budgetOnly = account.spendControl?.budgetOnly === true;
+  const hasPrimaryWindow = !budgetOnly && (account.windowMinutesPrimary != null || primaryState.everKnown);
+  const hasSecondaryWindow = !budgetOnly && (account.windowMinutesSecondary != null || secondaryState.everKnown);
+  const hasMonthlyWindow = hasMonthlyQuota(account) || monthlyState.everKnown;
   const weeklyOnly = !hasPrimaryWindow && hasSecondaryWindow;
   const primaryTrendPoints = trends?.primary ?? [];
   const secondaryTrendPoints = trends?.secondary ?? [];
@@ -258,10 +259,10 @@ export function AccountUsagePanel({
     <div className="min-w-0 space-y-4 rounded-lg border bg-muted/30 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("accounts.usage.title")}</h3>
       <div className={cn("grid gap-4", weeklyOnly || monthlyOnly ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2")}>
-        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
-        {account.spendControl?.budgetOnly ? null : monthlyOnly ? (
+        {hasMonthlyWindow && (
           <QuotaRow label={t("common.quota.monthly")} percent={monthly} resetAt={account.resetAtMonthly} />
-        ) : (
+        )}
+        {!budgetOnly && !monthlyOnly && (
           <>
             {!weeklyOnly && <QuotaRow label="5h" percent={primary} resetAt={account.resetAtPrimary} />}
             <QuotaRow label={t("common.quota.weekly")} percent={secondary} resetAt={account.resetAtSecondary} />

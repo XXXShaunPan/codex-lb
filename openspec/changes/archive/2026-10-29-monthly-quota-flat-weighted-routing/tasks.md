@@ -1,0 +1,6 @@
+- [x] Understand the current ent26 snapshot, normalization and routing paths.
+- [x] Normalize ent26 monthly percentage/reset and remove spending-budget panels.
+- [x] Replace priority-group assignment with flat quota-weighted random sampling.
+- [x] Remove priority UI and update operator explanations without deleting stored data.
+- [x] Add backend, frontend and browser regression coverage; validate isolated build/specs.
+- [x] Synchronize documentation and archive verified local implementation.

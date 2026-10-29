@@ -6,7 +6,7 @@ import { useDateDisplayFormatStore } from "@/hooks/use-date-format";
 import { useSmoothPercent } from "@/hooks/use-smooth-percent";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { SpendControlQuota } from "@/features/accounts/components/spend-control-quota";
+import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import {
   accountSubscriptionCredits,
   formatCreditValue,
@@ -96,9 +96,10 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
   const primaryRemaining = primaryState.percent;
   const secondaryRemaining = secondaryState.percent;
   const monthlyRemaining = monthlyState.percent;
-  const hasPrimaryWindow = account.windowMinutesPrimary != null || primaryState.everKnown;
-  const hasSecondaryWindow = account.windowMinutesSecondary != null || secondaryState.everKnown;
-  const hasMonthlyWindow = account.windowMinutesMonthly != null || monthlyState.everKnown;
+  const budgetOnly = account.spendControl?.budgetOnly === true;
+  const hasPrimaryWindow = !budgetOnly && (account.windowMinutesPrimary != null || primaryState.everKnown);
+  const hasSecondaryWindow = !budgetOnly && (account.windowMinutesSecondary != null || secondaryState.everKnown);
+  const hasMonthlyWindow = hasMonthlyQuota(account) || monthlyState.everKnown;
   const weeklyOnly = !hasPrimaryWindow && hasSecondaryWindow;
   const monthlyOnly = hasMonthlyWindow && !hasPrimaryWindow && !hasSecondaryWindow;
   const subscriptionCreditsLabel = formatCreditValue(accountSubscriptionCredits(account));
@@ -168,10 +169,10 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
 
       {/* Quota bars */}
       <div className={cn("mt-3.5 grid gap-3", weeklyOnly || monthlyOnly ? "grid-cols-1" : "grid-cols-2")}>
-        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
-        {account.spendControl?.budgetOnly ? null : monthlyOnly ? (
+        {hasMonthlyWindow && (
           <QuotaBar label={t("common.time.monthly")} percent={monthlyRemaining} resetLabel={monthlyReset} />
-        ) : (
+        )}
+        {!budgetOnly && !monthlyOnly && (
           <>
             {!weeklyOnly && <QuotaBar label="5h" percent={primaryRemaining} resetLabel={primaryReset} />}
             <QuotaBar label={t("common.time.weekly")} percent={secondaryRemaining} resetLabel={secondaryReset} />

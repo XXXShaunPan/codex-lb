@@ -39,8 +39,8 @@ export function ImageRoutingSettings() {
       </h3>
       <p className="text-sm text-muted-foreground">
         {zh
-          ? "图片模型保持为请求中的 gpt-image-*。实体账号使用下方宿主调用图片工具；Model Source 使用原始图片接口，并参加统一优先级和权重选择。"
-          : "The requested gpt-image model remains unchanged. Subscription accounts use a separate tool host; model sources use their Images API and participate in shared priority/weight routing."}
+          ? "图片模型保持为请求中的 gpt-image-*。实体账号使用下方宿主调用图片工具；Model Source 使用原始图片接口，并参加同一套共享路由策略。自定义加权策略按权重 × 最低剩余比例随机分配，不区分套餐或账号优先级。"
+          : "The requested gpt-image model remains unchanged. Subscription accounts use a separate tool host; model sources use their Images API and share the same routing strategy. Custom weighted routing draws by weight × minimum remaining quota, without plan or account priority groups."}
       </p>
       <label className="block text-sm">
         {zh

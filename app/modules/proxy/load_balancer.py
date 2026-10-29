@@ -184,7 +184,6 @@ from app.modules.usage.mappers import usage_history_to_window_row
 if TYPE_CHECKING:
     from app.modules.accounts.repository import AccountsRepository
     from app.modules.proxy.sticky_repository import StickyOwnerLookup, StickySessionsRepository
-    from app.modules.relay_routing.policy import RoutingDecision
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +262,6 @@ class _SelectionInputs(SelectionInputsProtocol):
     # C2-3 resilience toggles: resolved once per selection from the dashboard
     # snapshot passed to ``select_account``; None = inherit the env alias.
     soft_drain_enabled: bool | None = None
-    custom_routing_decisions: dict[str, RoutingDecision] | None = None
 
     @property
     def effective_continuity_owner_candidates(self) -> list[Account]:
@@ -752,18 +750,7 @@ class LoadBalancer:
             # Applied after exclusion/security filtering and on every reload,
             # so retries and filtered pools keep the dashboard soft-drain value.
             inputs = await load_unresolved_selection_inputs()
-            decisions = None
-            if routing_strategy == "custom_weighted_quota":
-                from app.modules.relay_routing.runtime import load_priority_decisions
-
-                decisions = await load_priority_decisions(
-                    accounts=inputs.accounts,
-                    latest_primary=inputs.latest_primary,
-                    latest_secondary=inputs.latest_secondary,
-                    latest_monthly=inputs.latest_monthly,
-                    now=self._clock.time(),
-                )
-            return replace(inputs, soft_drain_enabled=resilience.soft_drain_enabled, custom_routing_decisions=decisions)
+            return replace(inputs, soft_drain_enabled=resilience.soft_drain_enabled)
 
         selection_inputs = await load_selection_inputs()
         caps = concurrency_caps or effective_account_concurrency_caps()

@@ -19,10 +19,17 @@ the snapshot. Successful polling invalidates selection caches and its durable
 observation timestamp prevents polling storms when subscription windows are
 absent. Explicit null clears the budget; omission/errors retain prior evidence.
 
-Budget-only accounts use their budget percentage in custom weighted routing,
-including configured priority/hysteresis thresholds. Reached controls are a hard
+Budget-only accounts use their budget percentage in custom weighted routing.
+All eligible plans share one probability pool; legacy priority/hysteresis rules
+are no longer consulted. Reached controls are a hard
 filter even when standard subscription quota is bypassed. Elapsing a reset time
 does not itself prove that an exhausted budget was replenished.
+
+The monthly/flat-pool follow-up projects ent26 percentage and reset time into
+the existing monthly account-summary fields. Standard quota rows replace the
+separate spending-budget panel. Raw monetary snapshots/API fields remain for
+compatibility; no duration, reset date or subscription credits are fabricated.
+This follow-up is source-only until the operator separately activates it.
 
 Deployment is separate from this local side-task implementation. Before enabling
 the modified code, back up the database, apply the new forward migration and

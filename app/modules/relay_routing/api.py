@@ -34,12 +34,13 @@ async def update_weight(
     return payload
 
 
-@router.get("/rules", response_model=RoutingRulesResponse)
+@router.get("/rules", response_model=RoutingRulesResponse, deprecated=True)
 async def list_rules(context: RoutingWeightsContext = Depends(get_routing_weights_context)) -> RoutingRulesResponse:
+    """Legacy configuration only; priority rules no longer affect assignment."""
     return await context.service.list_rules()
 
 
-@router.put("/rules/plans/{plan_type}", response_model=PriorityRule)
+@router.put("/rules/plans/{plan_type}", response_model=PriorityRule, deprecated=True)
 async def update_plan_rule(
     payload: PriorityRule,
     plan_type: str = Path(pattern=r"^(\*|[a-z][a-z0-9_-]{0,63})$"),
@@ -49,7 +50,7 @@ async def update_plan_rule(
     return payload
 
 
-@router.put("/rules/accounts/{account_id}", response_model=AccountRuleUpdate)
+@router.put("/rules/accounts/{account_id}", response_model=AccountRuleUpdate, deprecated=True)
 async def update_account_rule(
     account_id: str,
     payload: AccountRuleUpdate,

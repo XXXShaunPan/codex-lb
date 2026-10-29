@@ -58,7 +58,7 @@ async def pick(ids, **kwargs):
 
 
 @pytest.mark.asyncio
-async def test_plan_rules_account_override_and_immediate_new_selection(async_client):
+async def test_legacy_rules_are_inert_but_weight_changes_affect_new_selection(async_client, monkeypatch):
     await seed()
     for name in ["plus-a", "plus-b", "pro-a"]:
         await usage(name, 0.6)
@@ -68,7 +68,19 @@ async def test_plan_rules_account_override_and_immediate_new_selection(async_cli
     assert plans["plus"]["normalPriority"] == 10 and plans["plus"]["lowPriority"] == 30
     assert plans["other"]["normalPriority"] == 20
     assert next(row for row in response.json()["accounts"] if row["name"] == "Compass")["quotaPlaceholder"]
-    assert (await pick(["plus-a", "pro-a"])).account.id == "plus-a"
+    from unittest.mock import AsyncMock
+
+    from app.modules.relay_routing.rules_repository import RoutingRulesRepository
+
+    decisions = AsyncMock(side_effect=AssertionError("Routing must not read priority/hysteresis rules"))
+    monkeypatch.setattr(RoutingRulesRepository, "decisions", decisions)
+
+    def draw(population, weights, k):
+        assert weights == pytest.approx([0.6] * len(population))
+        return [next((s for s in population if s.account_id == "pro-a"), population[0])]
+
+    monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
+    assert (await pick(["plus-a", "pro-a"])).account.id == "pro-a"
     override = {**plans["pro"], "normalPriority": 5}
     assert (
         await async_client.put("/api/relay-routing/rules/accounts/pro-a", json={"override": override})
@@ -77,44 +89,51 @@ async def test_plan_rules_account_override_and_immediate_new_selection(async_cli
     assert (
         await async_client.put("/api/relay-routing/rules/accounts/pro-a", json={"override": None})
     ).status_code == 200
-    assert (await pick(["plus-a", "pro-a"])).account.id == "plus-a"
+    assert (await pick(["plus-a", "pro-a"])).account.id == "pro-a"
     assert (await async_client.put("/api/relay-routing/rules/plans/pro", json=override)).status_code == 200
     assert (await pick(["plus-a", "pro-a"])).account.id == "pro-a"
     await async_client.put("/api/relay-routing/weights/pro-a", json={"weight": 0})
     assert (await pick(["plus-a", "pro-a"])).account.id == "plus-a"
+    decisions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_persisted_hysteresis_and_disabled_fallback_preserve_owner(async_client):
+async def test_saved_low_band_and_disabled_fallback_no_longer_gate_assignment(async_client):
     await seed()
     await usage("pro-a", 0.6)
     await usage("plus-a", 0.19)
-    assert (await pick(["plus-a", "pro-a"])).account.id == "pro-a"
+    async with get_background_session() as session:
+        session.add(RoutingQuotaBand(account_id="plus-a", low_quota=True, fingerprint="legacy", sample_at=123))
+        await session.commit()
+    assert (await pick(["plus-a"])).account.id == "plus-a"
     await usage("plus-a", 0.22, 1)
     # A new LoadBalancer has no process-local quota band to inherit.
     from app.modules.proxy.load_balancer import LoadBalancer
 
     restarted = LoadBalancer(get_proxy_service_for_app(app)._load_balancer._repo_factory)
     assert (
-        await restarted.select_account(routing_strategy="custom_weighted_quota", account_ids={"plus-a", "pro-a"})
-    ).account.id == "pro-a"
+        await restarted.select_account(routing_strategy="custom_weighted_quota", account_ids={"plus-a"})
+    ).account.id == "plus-a"
     async with get_background_session() as session:
         assert (await session.get(RoutingQuotaBand, "plus-a")).low_quota
     await usage("plus-a", 0.25, 2)
-    assert (await pick(["plus-a", "pro-a"])).account.id == "plus-a"
+    assert (await pick(["plus-a"])).account.id == "plus-a"
     await usage("plus-a", 0.1, 3)
     assert (await pick(["plus-a"])).account.id == "plus-a"
     response = await async_client.put(
         "/api/relay-routing/rules/plans/plus", json={"normalPriority": 10, "lowPriority": 30, "allowLowQuota": False}
     )
     assert response.status_code == 200, response.text
-    assert (await pick(["plus-a"])).account is None
+    assert (await pick(["plus-a"])).account.id == "plus-a"
     owner = await pick(["plus-a"], required_account_id="plus-a", required_continuity_owner=True)
     assert owner.account.id == "plus-a"
+    async with get_background_session() as session:
+        band = await session.get(RoutingQuotaBand, "plus-a")
+        assert band.low_quota and band.fingerprint == "legacy" and band.sample_at == 123
 
 
 @pytest.mark.asyncio
-async def test_unknown_quota_and_virtual_mixed_pool(async_client):
+async def test_unknown_quota_and_virtual_mixed_pool(async_client, monkeypatch):
     from app.modules.virtual_accounts.routing import _choose_virtual_candidate
 
     await seed()
@@ -136,8 +155,18 @@ async def test_unknown_quota_and_virtual_mixed_pool(async_client):
     from unittest.mock import patch
 
     with patch.object(balancer, "_load_selection_inputs", AsyncMock(return_value=inputs)):
-        assert await _choose_virtual_candidate(model="gpt-6", api_key=None, sources=[(source, "gpt-6")]) is None
-        # A saturated preferred Plus must not hide an available source group.
+
+        def draw(population, weights, k):
+            assert {state.account_id: weight for state, weight in zip(population, weights)} == {
+                "plus-a": 0.6,
+                "model-source:compass": 1.0,
+            }
+            return [next(state for state in population if state.account_id == "plus-a")]
+
+        with monkeypatch.context() as m:
+            m.setattr("app.modules.relay_routing.selection.random.choices", draw)
+            assert await _choose_virtual_candidate(model="gpt-6", api_key=None, sources=[(source, "gpt-6")]) is None
+        # A saturated real account must not hide an available source.
         from app.modules.proxy._load_balancer.types import RuntimeState
 
         balancer._runtime["plus-a"] = RuntimeState(inflight_streams=1_000_000)

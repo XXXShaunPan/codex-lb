@@ -53,7 +53,8 @@ API-key account scope or make an unavailable upstream model available.
 
 Source-only keys do not need a subscription host. Source Images requests use
 native generations/edits endpoints, preserve files and masks, and enter the
-same priority/weight/hysteresis selection as text requests. Streams close their
+same selected routing strategy as text requests, including the flat custom
+weight/quota probability pool without priority or hysteresis groups. Streams close their
 transport and release admission even before the first response body or after
 client cancellation. A limited key with missing terminal usage fails closed.
 

@@ -55,7 +55,7 @@ The image_generation tool SHALL retain the requested image model.
 
 ### Requirement: Image model sources are full routing candidates
 Enabled model sources with the requested image model SHALL participate with
-eligible subscription candidates in the existing priority/weight policy and
+eligible subscription candidates in the selected shared routing policy and
 API-key scope. Sources SHALL receive their native image API request with the
 original image model. Image edits SHALL preserve file and mask payloads.
 

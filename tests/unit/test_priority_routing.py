@@ -30,23 +30,30 @@ def choose(states):
     return select_account(states, routing_strategy="custom_weighted_quota").account
 
 
-def test_non_plus_total_weight_cannot_outvote_healthy_plus(monkeypatch):
+def test_all_plans_participate_without_plus_preference(monkeypatch):
     plus = state("plus")
     others = [state(f"pro-{i}", "pro", weight=1_000_000) for i in range(100)]
 
     def draw(population, weights, k):
-        assert population == [plus]
-        assert weights == [0.5]
-        return [plus]
+        assert population == [*others, plus]
+        assert weights == [500000] * 100 + [0.5]
+        return [others[0]]
 
     monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
-    assert choose([*others, plus]) is plus
+    assert choose([*others, plus]) is others[0]
 
 
-def test_default_group_order_and_disabled_zero_exhausted_plus():
+def test_low_quota_participates_but_zero_exhausted_and_disabled_do_not(monkeypatch):
     healthy, low, other = state("healthy"), state("low", remaining=0.19), state("other", "other")
-    assert choose([low, other, healthy]) is healthy
-    assert choose([low, other]) is other
+
+    def draw(population, weights, k):
+        assert population == [low, other, healthy]
+        assert weights == pytest.approx([0.19, 0.5, 0.5])
+        return [low]
+
+    with monkeypatch.context() as patch:
+        patch.setattr("app.modules.relay_routing.selection.random.choices", draw)
+        assert choose([low, other, healthy]) is low
     assert choose([low]) is low
     assert choose([replace(healthy, routing_weight=0), other]) is other
     assert choose([state("empty", remaining=0), other]) is other
@@ -98,8 +105,7 @@ def test_unknown_and_confirmed_absent_windows_are_different():
     ordinary_unknown = AccountState(account_id="unknown", status=AccountStatus.ACTIVE, plan_type="plus")
     assert choose([ordinary_unknown]) is None
     partial = replace(ordinary_unknown, used_percent=10)
-    other = state("other", "pro")
-    assert choose([partial, other]) is other
+    assert choose([partial]) is partial
 
 
 def test_fallback_disabled_does_not_break_continuity():

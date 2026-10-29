@@ -158,11 +158,6 @@ def prepare_selection_states(
         ),
         model=model,
     )
-    decisions = getattr(selection_inputs, "custom_routing_decisions", None)
-    if decisions is not None:
-        from app.modules.relay_routing.runtime import apply_priority_decisions
-
-        apply_priority_decisions(states, decisions)
     if required_account_id is None:
         return states, account_map
     return (

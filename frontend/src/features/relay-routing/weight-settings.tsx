@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/features/auth/hooks/use-auth";
 import { get, put } from "@/lib/api-client";
-import { PrioritySettings } from "./priority-settings";
 
 const EntrySchema = z.object({
   accountId: z.string(), name: z.string(), kind: z.enum(["account", "model_source"]),
@@ -52,11 +51,12 @@ export function RoutingWeightSettings({ accountId, disabled = false }: { account
   });
   if (!canWrite) return null;
   const entries = query.data?.accounts.filter(entry => !accountId || entry.accountId === accountId) ?? [];
-  return <><section className="space-y-3 rounded-lg border p-3">
+  return <section className="space-y-3 rounded-lg border p-3">
     <h3 className="text-sm font-semibold">{t("settings.routing.weights.title")}</h3>
     <p className="text-xs text-muted-foreground">{t("settings.routing.weights.description")}</p>
+    <p className="text-xs text-muted-foreground">{t("settings.routing.priority.placeholder")}</p>
     {query.isPending && <p className="text-xs">{t("common.loading")}</p>}
     {query.error && <p role="alert" className="text-xs text-destructive">{query.error.message}</p>}
     {entries.map(entry => <WeightRow key={`${entry.accountId}:${entry.weight}`} entry={entry} disabled={disabled} />)}
-  </section><PrioritySettings accountId={accountId} disabled={disabled} /></>;
+  </section>;
 }

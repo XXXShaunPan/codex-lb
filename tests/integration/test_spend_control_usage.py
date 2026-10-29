@@ -13,7 +13,7 @@ from app.db.models import Account, AccountStatus, ProviderSpendControl, UsageHis
 from app.db.session import SessionLocal
 from app.modules.accounts.repository import AccountsRepository
 from app.modules.proxy.load_balancer import RuntimeState, _state_from_account
-from app.modules.relay_routing.runtime import apply_priority_decisions, load_priority_decisions
+from app.modules.relay_routing.selection import effective_weight
 from app.modules.usage import updater as updater_module
 from app.modules.usage.repository import UsageRepository
 from app.modules.usage.updater import UsageUpdater
@@ -99,6 +99,12 @@ async def test_budget_only_poll_reaches_accounts_api_persists_and_is_seat_scoped
     assert rows["budget-a"]["spendControl"]["observedAt"].endswith("Z")
     assert rows["budget-a"]["spendControl"]["resetAt"] == "2026-11-01T00:00:00Z"
     assert rows["budget-a"]["usage"]["primaryRemainingPercent"] is None
+    assert rows["budget-a"]["usage"]["secondaryRemainingPercent"] is None
+    assert rows["budget-a"]["usage"]["monthlyRemainingPercent"] == 58
+    assert rows["budget-a"]["resetAtMonthly"] == "2026-11-01T00:00:00Z"
+    assert rows["budget-a"]["windowMinutesMonthly"] is None
+    assert rows["budget-a"]["remainingCreditsMonthly"] is None
+    assert rows["budget-b"]["usage"]["monthlyRemainingPercent"] == 58
 
 
 @pytest.mark.asyncio
@@ -142,15 +148,12 @@ async def test_older_observation_cannot_replace_new_budget_and_account_delete_ca
 
 
 @pytest.mark.asyncio
-async def test_priority_runtime_uses_budget_not_obsolete_weekly_rows(async_client, monkeypatch):
+async def test_routing_uses_monthly_budget_without_priority_runtime(async_client, monkeypatch):
     await seed("budget-a")
     monkeypatch.setattr(updater_module, "fetch_usage", AsyncMock(return_value=payload()))
     await refresh("budget-a")
     async with SessionLocal() as session:
         account = await AccountsRepository(session).get_by_id("budget-a")
-        decision = await load_priority_decisions(
-            accounts=[account], latest_primary={}, latest_secondary={}, latest_monthly={}, now=1793181600
-        )
         state = _state_from_account(
             account=account,
             primary_entry=None,
@@ -159,6 +162,45 @@ async def test_priority_runtime_uses_budget_not_obsolete_weekly_rows(async_clien
             now=1793181600,
             soft_drain_enabled=False,
         )
-        apply_priority_decisions([state], decision)
-        assert decision["budget-a"].remaining == 0.58
+        assert effective_weight(state) == 0.58
         assert select_account([state], routing_strategy="custom_weighted_quota").account is not None
+
+
+@pytest.mark.asyncio
+async def test_native_and_mixed_source_pool_share_ent26_percentage_scores(async_client, monkeypatch):
+    from types import SimpleNamespace
+
+    from app.dependencies import get_proxy_service_for_app
+    from app.main import app
+    from app.modules.virtual_accounts.routing import _choose_virtual_candidate
+
+    for name, limit in [("budget-a", "200.00"), ("budget-b", "50.00")]:
+        await seed(name)
+        monkeypatch.setattr(updater_module, "fetch_usage", AsyncMock(return_value=payload(limit)))
+        await refresh(name)
+    assert (
+        await async_client.put("/api/settings", json={"routingStrategy": "custom_weighted_quota"})
+    ).status_code == 200
+    assert (await async_client.put("/api/relay-routing/weights/budget-b", json={"weight": 3})).status_code == 200
+    balancer = get_proxy_service_for_app(app)._load_balancer
+    expected = {"budget-a": 0.58, "budget-b": 1.74, "model-source:compass": 2.0}
+    observed = []
+
+    def draw(population, weights, k):
+        scores = {state.account_id: weight for state, weight in zip(population, weights)}
+        observed.append(scores)
+        assert scores == pytest.approx({key: expected[key] for key in scores})
+        # Even the smallest positive score can receive this allocation.
+        return [next(state for state in population if state.account_id == "budget-a")]
+
+    monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
+    selected = await balancer.select_account(
+        routing_strategy="custom_weighted_quota",
+        account_ids={"budget-a", "budget-b"},
+    )
+    assert selected.account.id == "budget-a"
+    inputs = await balancer._load_selection_inputs(model=None, service_tier=None, account_ids={"budget-a", "budget-b"})
+    monkeypatch.setattr(balancer, "_load_selection_inputs", AsyncMock(return_value=inputs))
+    source = SimpleNamespace(id="compass", routing_weight=2)
+    assert await _choose_virtual_candidate(model="gpt-6", api_key=None, sources=[(source, "gpt-6")]) is None
+    assert observed[-1] == pytest.approx(expected)

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { useAccounts } from "@/features/accounts/hooks/use-accounts";
 import type { AccountSummary } from "@/features/accounts/schemas";
+import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import { cn } from "@/lib/utils";
 import { isAccountAssignmentSelectable, normalizeStatus } from "@/utils/account-status";
 import { formatPercentNullable, formatSlug, formatWindowLabel } from "@/utils/formatters";
@@ -38,11 +39,11 @@ type LimitChip = {
 function buildLimitChips(account: AccountSummary, t: ReturnType<typeof useTranslation>["t"]): LimitChip[] {
   const chips: LimitChip[] = [];
   const monthlyOnly =
-    account.windowMinutesMonthly != null &&
+    account.spendControl?.budgetOnly || (hasMonthlyQuota(account) &&
     account.windowMinutesPrimary == null &&
-    account.windowMinutesSecondary == null;
+    account.windowMinutesSecondary == null);
 
-  if (monthlyOnly || account.usage?.monthlyRemainingPercent != null) {
+  if (hasMonthlyQuota(account)) {
     chips.push({
       key: `${account.accountId}-monthly`,
       label: t("apiKeys.accountSelect.limitLeft", {

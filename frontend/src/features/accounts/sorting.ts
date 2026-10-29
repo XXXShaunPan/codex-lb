@@ -24,12 +24,17 @@ function visibleQuotaResetTimestamps(
   quotaDisplay: AccountQuotaDisplayPreference,
 ): number[] {
   const now = Date.now();
+  if (account.spendControl?.budgetOnly) {
+    const resetAt = parseDate(account.resetAtMonthly)?.getTime();
+    return resetAt != null && resetAt > now ? [resetAt] : [];
+  }
   const hasPrimary = account.windowMinutesPrimary != null || account.usage?.primaryRemainingPercent != null || account.resetAtPrimary != null;
   const hasSecondary = account.windowMinutesSecondary != null || account.usage?.secondaryRemainingPercent != null || account.resetAtSecondary != null;
   const showPrimary = hasPrimary && (quotaDisplay !== "weekly" || !hasSecondary);
   const showSecondary = hasSecondary && (quotaDisplay !== "5h" || !hasPrimary);
 
   return [
+    parseDate(account.resetAtMonthly)?.getTime() ?? Number.POSITIVE_INFINITY,
     showPrimary ? parseDate(account.resetAtPrimary)?.getTime() ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY,
     showSecondary ? parseDate(account.resetAtSecondary)?.getTime() ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY,
   ].filter((resetAt) => resetAt > now);

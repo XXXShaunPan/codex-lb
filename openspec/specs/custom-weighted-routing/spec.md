@@ -1,7 +1,7 @@
 # Custom Weighted Routing Specification
 
 ## Purpose
-Define administrator-managed priority groups with quota-weighted new allocation.
+Define a flat, plan-independent pool with quota-weighted random new allocation.
 
 ## Requirements
 
@@ -17,20 +17,21 @@ change these controls. Deleted accounts MUST return not-found.
 - **THEN** the source retains 2.5 after a restart
 - **AND** the same setting is visible in its account detail and routing settings
 
-### Requirement: Highest eligible priority group first
-For `custom_weighted_quota`, new allocations SHALL use only eligible accounts
-with the smallest numeric priority. Within that group probability SHALL be
-proportional to configured weight multiplied by known remaining quota.
+### Requirement: Flat quota-weighted random selection
+For `custom_weighted_quota`, all eligible accounts SHALL participate in one pool.
+Probability SHALL be proportional to custom weight multiplied by the minimum
+known applicable remaining fraction. Plan and account priority groups MUST NOT
+filter candidates. Normal allocations SHALL use a random draw, not score argmax.
+Only non-allocating eligibility probes MAY select deterministically.
 
 #### Scenario: Equivalent effective weights
 - **GIVEN** A has weight 2 and 50% remaining and B has weight 1 and 100% remaining
 - **WHEN** a new eligible request is assigned
-- **THEN** A and B have equal draw probability when in the same priority group
+- **THEN** A and B have equal draw probability regardless of their plans or saved priority rules
 
-#### Scenario: Non-Plus aggregate weight cannot crowd out Plus
-- **GIVEN** an eligible normal Plus has priority 10 and others have priority 20
-- **WHEN** a new request is assigned
-- **THEN** only the Plus participates regardless of the others' aggregate weight
+#### Scenario: Lower score can win
+- **WHEN** one account has a smaller positive score than another
+- **THEN** it still has nonzero selection probability
 
 #### Scenario: Exhausted or zero-weight pool
 - **WHEN** all otherwise eligible candidates have weight zero or no remaining quota
@@ -40,54 +41,53 @@ proportional to configured weight multiplied by known remaining quota.
 ### Requirement: Reported quota measurement
 Remaining fractions SHALL be clamped to [0,1] using reported usage before
 synthetic pressure. The minimum known applicable fraction SHALL weight the
-draw. Missing requested windows SHALL put ordinary accounts in their low
-band; no known quota SHALL exclude new allocation. Confirmed absent windows
-SHALL be ignored in minimum-applicable mode. Sources SHALL retain labeled
+draw, including short, weekly or monthly quota as applicable. Missing windows
+MUST NOT be invented; all unknown/invalid quota SHALL exclude new allocation.
+Confirmed absent windows SHALL be ignored. Sources SHALL retain labeled
 100% routing placeholders, which MUST NOT be represented as provider balance.
 
 #### Scenario: Inflight pressure does not change a score
 - **WHEN** a candidate reports 50% remaining but its synthetic pressure is 100%
 - **THEN** its score uses 50% remaining, subject to hard concurrency limits
 
+#### Scenario: Tightest quota wins the score
+- **WHEN** a real account has 80% short-window and 30% long-window quota remaining
+- **THEN** its score is custom weight multiplied by 0.3
+
 ### Requirement: Ranking independence
-Within a priority group, plan capacity, reset-time preference, burn/preserve, soft
-health tiers, error/latency weight multipliers, planner costs and last-selected
-time MUST NOT alter the weighted draw.
+Plan capacity, plan/account priority, low-quota bands, reset-time preference,
+burn/preserve, soft health tiers, error/latency weight multipliers, planner costs
+and last-selected time MUST NOT alter the weighted draw.
 
 #### Scenario: A preserve account competes with a burn-first account
-- **GIVEN** both accounts are eligible in the same group with equal effective weights
+- **GIVEN** both accounts are eligible with equal effective weights
 - **THEN** both have equal probability regardless of their routing-policy labels
+
+#### Scenario: Obsolete low-band exclusion
+- **WHEN** a positive-quota account has a saved rule disallowing low-band admission
+- **THEN** that rule does not prevent participation in the custom strategy
 
 ### Requirement: Eligibility and continuity remain enforced
 Authentication, assignment scope, model capability, pause/deactivation,
 cooldown/backoff, quota exhaustion and concurrency caps MUST remain enforced.
 Existing hard continuity and session ownership MUST remain authoritative;
-weights, priorities and low-quota admission rules govern only new assignments.
+weights and quota-derived scores govern only new assignments.
 
 #### Scenario: An established owner has weight zero
 - **WHEN** an existing session validates its owner whose weight is now zero
 - **THEN** that weight alone does not move the existing session to another account
 - **AND** new allocations exclude the zero-weight account
 
-### Requirement: Administrator rules and persistent hysteresis
-Administrators SHALL configure normal/low priority, downgrade/recovery
-thresholds, quota basis and low-band admission at plan and account levels.
-Account overrides SHALL replace plan defaults and SHALL be removable to
-restore inheritance. Defaults SHALL be Plus 10/30, others 20/20, thresholds
-20/25, minimum applicable windows and low-band admission enabled. Recovery
-MUST exceed downgrade. Changes SHALL apply to subsequent new allocations.
-Quota bands SHALL persist across restart and stale observations MUST NOT
-reverse newer transitions. Visitors MUST NOT read or mutate these rules.
+### Requirement: Inert legacy priority configuration
+The custom strategy SHALL NOT read or update legacy priority/hysteresis rules
+during assignment. Settings and account details MUST NOT display priority-rule
+editors. Existing stored data and authenticated legacy APIs MAY remain for
+compatibility, clearly marked deprecated and without routing effect.
+Visitors MUST NOT read or mutate those legacy APIs.
 
-#### Scenario: Recovery avoids oscillation
-- **GIVEN** a Plus has remaining quota 19%, then 22%, then 25%
-- **WHEN** new allocations are evaluated across process restarts
-- **THEN** it stays low at 22% and returns to normal at 25%
-
-#### Scenario: Low Plus fallback is disabled
-- **GIVEN** a low Plus has low-band admission disabled
-- **WHEN** all other groups are unavailable
-- **THEN** new allocation fails closed and existing valid ownership is retained
+#### Scenario: Stored rules survive without affecting routing
+- **WHEN** the new implementation runs against an existing rules database
+- **THEN** routing ignores those rules without deleting their records
 
 ### Requirement: Opt-in and operational isolation
 Existing routing strategies SHALL retain their behavior. Selecting the new

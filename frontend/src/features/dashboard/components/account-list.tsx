@@ -13,6 +13,7 @@ import {
   formatPurchasedCredits,
 } from "@/features/dashboard/account-credit-display";
 import type { AccountSummary } from "@/features/dashboard/schemas";
+import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import { useDateDisplayFormatStore } from "@/hooks/use-date-format";
 import { usePrivacyStore } from "@/hooks/use-privacy";
 import { useSmoothPercent } from "@/hooks/use-smooth-percent";
@@ -82,23 +83,23 @@ function quotaLabel(label: string, percent: number | null, resetAt: string | nul
 function accountQuotaLabels(account: AccountSummary) {
   const weeklyOnly = account.windowMinutesPrimary == null && account.windowMinutesSecondary != null;
   const monthlyOnly =
-    account.windowMinutesMonthly != null &&
+    hasMonthlyQuota(account) &&
     account.windowMinutesPrimary == null &&
     account.windowMinutesSecondary == null;
 
-  if (monthlyOnly) {
-    return [
-      quotaLabel("Monthly", account.usage?.monthlyRemainingPercent ?? null, account.resetAtMonthly),
-    ];
-  }
+  const monthly = hasMonthlyQuota(account)
+    ? [quotaLabel("Monthly", account.usage?.monthlyRemainingPercent ?? null, account.resetAtMonthly)] : [];
+  if (monthlyOnly || account.spendControl?.budgetOnly) return monthly;
 
   if (weeklyOnly) {
     return [
+      ...monthly,
       quotaLabel("Weekly", account.usage?.secondaryRemainingPercent ?? null, account.resetAtSecondary),
     ];
   }
 
   return [
+    ...monthly,
     quotaLabel("5h", account.usage?.primaryRemainingPercent ?? null, account.resetAtPrimary),
     quotaLabel("Weekly", account.usage?.secondaryRemainingPercent ?? null, account.resetAtSecondary),
   ];
@@ -238,19 +239,20 @@ function AccountQuotaCells({ account }: { account: AccountSummary }) {
   const primaryState = useSmoothPercent(account.usage?.primaryRemainingPercent ?? null);
   const secondaryState = useSmoothPercent(account.usage?.secondaryRemainingPercent ?? null);
   const monthlyState = useSmoothPercent(account.usage?.monthlyRemainingPercent ?? null);
-  const hasPrimaryWindow = account.windowMinutesPrimary != null || primaryState.everKnown;
-  const hasSecondaryWindow = account.windowMinutesSecondary != null || secondaryState.everKnown;
-  const hasMonthlyWindow = account.windowMinutesMonthly != null || monthlyState.everKnown;
+  const budgetOnly = account.spendControl?.budgetOnly === true;
+  const hasPrimaryWindow = !budgetOnly && (account.windowMinutesPrimary != null || primaryState.everKnown);
+  const hasSecondaryWindow = !budgetOnly && (account.windowMinutesSecondary != null || secondaryState.everKnown);
+  const hasMonthlyWindow = hasMonthlyQuota(account) || monthlyState.everKnown;
   const monthlyOnly = hasMonthlyWindow && !hasPrimaryWindow && !hasSecondaryWindow;
   const weeklyOnly = !hasPrimaryWindow && hasSecondaryWindow;
-  const quotas = monthlyOnly
-    ? [quotaLabel("Monthly", monthlyState.percent, account.resetAtMonthly)]
-    : weeklyOnly
-      ? [quotaLabel("Weekly", secondaryState.percent, account.resetAtSecondary)]
-      : [
+  const quotas = [
+    ...(hasMonthlyWindow ? [quotaLabel("Monthly", monthlyState.percent, account.resetAtMonthly)] : []),
+    ...(monthlyOnly || budgetOnly ? [] : weeklyOnly
+      ? [quotaLabel("Weekly", secondaryState.percent, account.resetAtSecondary)] : [
           quotaLabel("5h", primaryState.percent, account.resetAtPrimary),
           quotaLabel("Weekly", secondaryState.percent, account.resetAtSecondary),
-        ];
+        ]),
+  ];
   return (
     <div className="grid gap-1.5 text-xs">
       {quotas.map((quota) => (

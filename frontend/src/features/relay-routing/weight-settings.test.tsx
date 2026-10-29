@@ -63,4 +63,18 @@ describe("custom weight and remaining quota routing", () => {
     const {container}=renderWithProviders(<RoutingWeightSettings />);
     expect(container).toBeEmptyDOMElement();
   });
+  it("explains probability, minimum quota and the placeholder without fetching priority rules", async () => {
+    const rules = vi.fn(() => HttpResponse.json({plans:[],accounts:[]}));
+    server.use(
+      http.get("/api/relay-routing/weights", () => HttpResponse.json({accounts:[]})),
+      http.get("/api/relay-routing/rules", rules),
+    );
+    renderWithProviders(<RoutingWeightSettings />);
+    expect(screen.getByText(/Scores define random probabilities/)).toBeInTheDocument();
+    expect(screen.getByText(/lowest applicable remaining quota fraction/)).toBeInTheDocument();
+    expect(screen.getByText(/100% is only a routing placeholder/)).toBeInTheDocument();
+    expect(screen.queryByText("Plan and account priority rules")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
+    expect(rules).not.toHaveBeenCalled();
+  });
 });

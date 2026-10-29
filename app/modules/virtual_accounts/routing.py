@@ -181,18 +181,6 @@ async def _choose_virtual_candidate(
     all_states = [*real_states, *virtual_states]
     if not all_states:
         return None
-    if settings.routing_strategy == "custom_weighted_quota":
-        from app.modules.relay_routing.runtime import apply_priority_decisions, load_priority_decisions
-
-        decisions = await load_priority_decisions(
-            accounts=selection_inputs.accounts,
-            latest_primary=selection_inputs.latest_primary,
-            latest_secondary=selection_inputs.latest_secondary,
-            latest_monthly=selection_inputs.latest_monthly,
-            now=time.time(),
-            sources=[source for source, _ in sources],
-        )
-        apply_priority_decisions(all_states, decisions)
     traffic_class = getattr(api_key, "traffic_class", "foreground") if api_key is not None else "foreground"
     selection = _select_account_preferring_budget_safe(
         all_states,

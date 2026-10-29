@@ -148,7 +148,7 @@ describe("AccountMultiSelect", () => {
     expect(screen.queryByRole("menuitemcheckbox", { name: /deactivated-picker@example\.com/i })).not.toBeInTheDocument();
   });
 
-  it("shows Monthly left for monthly-only free accounts", async () => {
+  it.each(["free", "ent26"])("shows Monthly left for %s accounts", async planType => {
     server.use(
       http.get("/api/accounts", () =>
         HttpResponse.json({
@@ -157,7 +157,7 @@ describe("AccountMultiSelect", () => {
               accountId: "acc_free",
               email: "free@example.com",
               displayName: "Free monthly",
-              planType: "free",
+              planType,
               usage: {
                 primaryRemainingPercent: null,
                 secondaryRemainingPercent: null,
@@ -165,7 +165,7 @@ describe("AccountMultiSelect", () => {
               },
               windowMinutesPrimary: null,
               windowMinutesSecondary: null,
-              windowMinutesMonthly: 43_200,
+              windowMinutesMonthly: planType === "free" ? 43_200 : null,
             }),
           ],
         }),
