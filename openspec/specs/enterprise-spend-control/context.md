@@ -29,7 +29,8 @@ The monthly/flat-pool follow-up projects ent26 percentage and reset time into
 the existing monthly account-summary fields. Standard quota rows replace the
 separate spending-budget panel. Raw monetary snapshots/API fields remain for
 compatibility; no duration, reset date or subscription credits are fabricated.
-This follow-up is source-only until the operator separately activates it.
+The operator separately authorized activation on 2026-10-29; see the
+[monthly/flat-pool deployment record](../../changes/archive/2026-10-29-monthly-quota-flat-weighted-routing/deployment.md).
 
 Deployment is separate from this local side-task implementation. Before enabling
 the modified code, back up the database, apply the new forward migration and

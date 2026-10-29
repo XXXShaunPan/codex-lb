@@ -61,10 +61,12 @@ configuration update, migration, service restart, credential reset or frontend
 publication was performed. Normal production background activity was not paused.
 Service PID remained 5552, and the served entry file SHA256 remained
 51FB8155888FB2FBF444B83A30FC6303F2DBC411378D57244A4744E58C22FD3C.
-The new source and frontend build require a separately authorized activation.
+The new source and frontend build required a separately authorized activation,
+which was subsequently completed; see [deployment verification](deployment.md).
 
 No outstanding correctness or design-divergence findings. Code, main specs and
 operator documentation are synchronized, and the verified local change is archived.
 The archive CLI emitted a non-blocking suggestion to split proposals with more
 than ten deltas (including requirement renames); these deltas belong to this one
-quota-display/routing revision. Deployment remains outside this task's scope.
+quota-display/routing revision. Deployment was handled by the subsequent explicit
+publication/activation request rather than the original local implementation task.

@@ -38,9 +38,11 @@ minima, ent26 allowance normalization, native/mixed-source paths, inert saved
 rules, zero/unknown quota, continuity and hard availability constraints. Legacy
 API validation and visitor restrictions remain enforced.
 
-The follow-up is prepared as local source changes with isolated test databases
-and frontend output. It does not restart the production process, publish static
-assets, change live settings or rotate credentials. The manual activation script checks
+The follow-up was initially prepared as local source changes with isolated test
+databases and frontend output. After explicit authorization it was published and
+activated on 2026-10-29 without a migration, setting change or credential rotation;
+see the [deployment record](../../changes/archive/2026-10-29-monthly-quota-flat-weighted-routing/deployment.md).
+The manual activation script checks
 a committed tag and hashed frontend build before stopping the service; its
 `-CheckOnly` mode is read-only. See the
 [operator guide](../../../docs/custom-weighted-routing.md) for activation and
