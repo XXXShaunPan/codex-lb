@@ -3,12 +3,22 @@ from __future__ import annotations
 from collections.abc import Collection
 from datetime import datetime
 
+from app.core.usage.models import SpendControlSnapshot
 from app.db.models import UsageHistory
 from app.db.session import detach_session_objects, get_background_session
 from app.modules.usage.repository import AdditionalUsageRepository, UsageRepository, UsageWindowWrite
 
 
 class BackgroundUsageRepository:
+    async def save_spend_control(
+        self,
+        account_id: str,
+        snapshot: SpendControlSnapshot,
+        observed_at: datetime,
+    ) -> bool:
+        async with get_background_session() as session:
+            return await UsageRepository(session).save_spend_control(account_id, snapshot, observed_at)
+
     async def latest_entry_for_account(
         self,
         account_id: str,

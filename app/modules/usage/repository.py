@@ -31,6 +31,7 @@ from sqlalchemy import cast as sqlalchemy_cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.settings import get_settings
+from app.core.usage.models import SpendControlSnapshot
 from app.core.usage.types import UsageAggregateRow, UsageTrendBucket
 from app.core.utils.time import utcnow
 from app.db.account_identity_lock import lock_postgresql_account_identities
@@ -564,6 +565,16 @@ def _merge_latest_additional_usage_entries(
 class UsageRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def save_spend_control(
+        self,
+        account_id: str,
+        snapshot: SpendControlSnapshot,
+        observed_at: datetime,
+    ) -> bool:
+        from app.modules.usage.spend_control_repository import save_spend_control
+
+        return await save_spend_control(self._session, account_id, snapshot, observed_at)
 
     async def latest_entry_for_account(
         self,

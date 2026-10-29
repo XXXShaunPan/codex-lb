@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Mapping, Protocol, cast
 
+from sqlalchemy.orm.attributes import set_committed_value
+
 from app.core import usage as usage_core
 from app.core.auth.refresh import RefreshError
 from app.core.balancer import (
@@ -23,12 +25,12 @@ from app.core.clients.usage import UsageFetchError, fetch_usage
 from app.core.crypto import TokenEncryptor
 from app.core.plan_types import ACCOUNT_PLAN_TYPES, coerce_account_plan_type, normalize_account_plan_type
 from app.core.upstream_proxy import ResolvedUpstreamRoute, UpstreamProxyRouteError, resolve_upstream_route
-from app.core.usage.models import AdditionalRateLimitPayload, UsagePayload, UsageWindow
+from app.core.usage.models import AdditionalRateLimitPayload, SpendControlSnapshot, UsagePayload, UsageWindow
 from app.core.usage.refresh_policy import USAGE_REFRESH_INTERVAL_SECONDS
 from app.core.utils.request_id import get_request_id
 from app.core.utils.shared_future import wait_on_shared_future
 from app.core.utils.time import utcnow
-from app.db.models import Account, AccountStatus, UsageHistory
+from app.db.models import Account, AccountStatus, ProviderSpendControl, UsageHistory
 from app.db.session import get_background_session
 from app.modules.accounts.auth_manager import AccountsRepositoryPort, AuthManager, _clean_optional
 from app.modules.accounts.background_repository import BackgroundAccountsRepository
@@ -47,6 +49,13 @@ logger = logging.getLogger(__name__)
 
 
 class UsageRepositoryPort(Protocol):
+    async def save_spend_control(
+        self,
+        account_id: str,
+        snapshot: SpendControlSnapshot,
+        observed_at: datetime,
+    ) -> bool: ...
+
     async def latest_entry_for_account(
         self,
         account_id: str,
@@ -515,6 +524,9 @@ class UsageUpdater:
         now: datetime,
         interval_seconds: int,
     ) -> bool:
+        budget = account.spend_control_snapshot
+        if budget is not None and 0 <= (now - budget.observed_at).total_seconds() < interval_seconds:
+            return True
         if _latest_usage_is_fresh(latest, now=now, interval_seconds=interval_seconds):
             return not await self._additional_usage_is_stale(account.id, now=now, interval_seconds=interval_seconds)
         # A stale (or elapsed-reset) newest row of one window must not
@@ -593,6 +605,7 @@ class UsageUpdater:
         access_token_override: str | None = None,
     ) -> AccountRefreshResult:
         access_token = access_token_override or self._encryptor.decrypt(account.access_token_encrypted)
+        observed_at = utcnow()
         payload: UsagePayload | None = None
         try:
             route = await _resolve_upstream_route_for_account(account, operation="usage_refresh")
@@ -679,6 +692,41 @@ class UsageUpdater:
             )
             return AccountRefreshResult(usage_written=False, fetch_succeeded=False)
 
+        budget_written = False
+        if payload.spend_control is not None or (
+            "spend_control" in payload.model_fields_set and account.spend_control_snapshot is not None
+        ):
+            control = payload.spend_control
+            if control is not None and control.individual_limit is not None:
+                limit = control.individual_limit
+                if limit.reset_at is None and limit.reset_after_seconds is not None:
+                    epoch = int(observed_at.replace(tzinfo=timezone.utc).timestamp())
+                    control = control.model_copy(
+                        update={
+                            "individual_limit": limit.model_copy(
+                                update={"reset_at": epoch + limit.reset_after_seconds}
+                            ),
+                        }
+                    )
+            snapshot = SpendControlSnapshot(
+                control=control,
+                credits=payload.credits,
+                rate_limit_present=payload.rate_limit is not None
+                and (payload.rate_limit.primary_window is not None or payload.rate_limit.secondary_window is not None),
+            )
+            budget_written = await self._usage_repo.save_spend_control(account.id, snapshot, observed_at)
+            if budget_written:
+                set_committed_value(
+                    account,
+                    "spend_control_snapshot",
+                    ProviderSpendControl(
+                        account_id=account.id,
+                        payload_json=snapshot.model_dump_json(),
+                        observed_at=observed_at,
+                    ),
+                )
+                get_account_selection_cache().invalidate()
+
         now_epoch = _now_epoch()
         if self._additional_usage_repo is not None:
             if payload.additional_rate_limits:
@@ -729,7 +777,7 @@ class UsageUpdater:
         rate_limit = payload.rate_limit
         if rate_limit is None:
             additional_synced = self._additional_usage_repo is not None and payload.additional_rate_limits is not None
-            return AccountRefreshResult(usage_written=additional_synced)
+            return AccountRefreshResult(usage_written=budget_written or additional_synced)
         # Treat both None and empty rate_limit (both windows absent) as
         # additional-only to avoid falling through to window processing.
         normalized_windows = usage_core.normalize_rate_limit_windows(
@@ -744,10 +792,10 @@ class UsageUpdater:
                 additional_synced = (
                     self._additional_usage_repo is not None and payload.additional_rate_limits is not None
                 )
-                return AccountRefreshResult(usage_written=additional_synced)
+                return AccountRefreshResult(usage_written=budget_written or additional_synced)
         if primary is None and secondary is None and monthly is None:
             additional_synced = self._additional_usage_repo is not None and payload.additional_rate_limits is not None
-            return AccountRefreshResult(usage_written=additional_synced)
+            return AccountRefreshResult(usage_written=budget_written or additional_synced)
         credits_has, credits_unlimited, credits_balance = _credits_snapshot(payload)
         snapshot_windows: list[UsageWindowWrite] = []
 
@@ -793,7 +841,7 @@ class UsageUpdater:
         )
         usage_written = any(_usage_entry_written(entry) for entry in entries)
         await self._recover_quota_status_from_usage(account, primary=primary, secondary=secondary, monthly=monthly)
-        return AccountRefreshResult(usage_written=usage_written)
+        return AccountRefreshResult(usage_written=budget_written or usage_written)
 
     async def _deactivate_for_client_error(self, account: Account, exc: UsageFetchError) -> None:
         if not self._auth_manager:
@@ -975,6 +1023,7 @@ class UsageUpdater:
         account.deactivation_reason = stored.deactivation_reason
         account.reset_at = stored.reset_at
         account.blocked_at = stored.blocked_at
+        set_committed_value(account, "spend_control_snapshot", stored.spend_control_snapshot)
 
 
 async def _run_requested_refresh(account_id: str) -> None:

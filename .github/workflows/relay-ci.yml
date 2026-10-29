@@ -46,12 +46,17 @@ jobs:
       - run: >-
           uv run pytest tests/integration/test_api_keys_api.py tests/unit/test_proxy_api_usage.py
           tests/integration/test_request_logs_api.py tests/integration/test_request_logs_filters.py -q
+      - run: >-
+          uv run pytest tests/unit/test_spend_controls.py tests/integration/test_spend_control_usage.py
+          tests/integration/test_spend_control_migration.py tests/unit/test_usage_updater.py -q
       - working-directory: frontend
         run: bun install --frozen-lockfile
       - working-directory: frontend
         run: bun run test src/features/codex-config/commands.test.ts src/features/codex-config/copy-command.test.tsx src/utils/clipboard.test.ts src/components/copy-button.test.tsx src/features/visitor-access/relay-access.test.tsx src/features/image-routing/image-settings.test.tsx src/features/relay-routing/weight-settings.test.tsx src/features/relay-routing/priority-settings.test.tsx src/features/settings/components/routing-settings.test.tsx
       - working-directory: frontend
         run: bun run build
+      - working-directory: frontend
+        run: bun run test src/features/accounts/components/spend-control-quota.test.tsx src/features/accounts/components/account-usage-panel.test.tsx src/features/accounts/components/account-list-item.test.tsx src/features/dashboard/components/account-card.test.tsx
       # Keep the CLI used to validate the upstream spec baseline reproducible.
       - run: npx --yes @fission-ai/openspec@1.13.1 validate --specs --strict
   native-config-commands:

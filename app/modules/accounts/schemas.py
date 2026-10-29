@@ -79,6 +79,18 @@ class AccountAdditionalQuota(DashboardModel):
     secondary_window: AccountAdditionalWindow | None = None
 
 
+class AccountSpendControl(DashboardModel):
+    unit: str | None = None
+    limit: str | None = None
+    used: str | None = None
+    remaining: str | None = None
+    remaining_percent: float | None = None
+    reached: bool | None = None
+    reset_at: datetime | None = None
+    observed_at: datetime
+    budget_only: bool
+
+
 class AccountSummary(DashboardModel):
     account_id: str
     chatgpt_account_id: str | None = None
@@ -93,6 +105,7 @@ class AccountSummary(DashboardModel):
     status: str
     security_work_authorized: bool = False
     usage: AccountUsage | None = None
+    spend_control: AccountSpendControl | None = None
     reset_at_primary: datetime | None = None
     reset_at_secondary: datetime | None = None
     reset_at_monthly: datetime | None = None

@@ -1,0 +1,5 @@
+- [x] Add typed budget snapshots and an independently named, reversible migration.
+- [x] Persist successful budget-only polls and preserve polling/cache/ownership semantics.
+- [x] Expose budget summaries and prevent exhausted-budget routing.
+- [x] Render actual budgets in account list, cards and details without synthetic windows.
+- [x] Verify migration, API, polling, routing and frontend regressions; document and archive.

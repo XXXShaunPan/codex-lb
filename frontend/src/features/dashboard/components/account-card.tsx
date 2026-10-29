@@ -6,6 +6,7 @@ import { useDateDisplayFormatStore } from "@/hooks/use-date-format";
 import { useSmoothPercent } from "@/hooks/use-smooth-percent";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { SpendControlQuota } from "@/features/accounts/components/spend-control-quota";
 import {
   accountSubscriptionCredits,
   formatCreditValue,
@@ -167,7 +168,8 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
 
       {/* Quota bars */}
       <div className={cn("mt-3.5 grid gap-3", weeklyOnly || monthlyOnly ? "grid-cols-1" : "grid-cols-2")}>
-        {monthlyOnly ? (
+        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
+        {account.spendControl?.budgetOnly ? null : monthlyOnly ? (
           <QuotaBar label={t("common.time.monthly")} percent={monthlyRemaining} resetLabel={monthlyReset} />
         ) : (
           <>

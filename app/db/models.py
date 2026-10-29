@@ -180,6 +180,14 @@ class Account(Base):
         nullable=False,
     )
 
+    spend_control_snapshot: Mapped["ProviderSpendControl | None"] = relationship(
+        "ProviderSpendControl",
+        lazy="selectin",
+        uselist=False,
+        cascade="all, delete-orphan",
+        single_parent=True,
+    )
+
     api_key_assignments: Mapped[list["ApiKeyAccountAssignment"]] = relationship(
         "ApiKeyAccountAssignment",
         back_populates="account",
@@ -200,6 +208,18 @@ class Account(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+
+
+class ProviderSpendControl(Base):
+    __tablename__ = "provider_billing_spend_controls"
+
+    account_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class UsageHistory(Base):

@@ -65,6 +65,18 @@ export const AccountAdditionalQuotaSchema = z.object({
   secondaryWindow: AccountAdditionalWindowSchema.nullable().optional(),
 });
 
+export const AccountSpendControlSchema = z.object({
+  unit: z.string().nullable(),
+  limit: z.string().nullable(),
+  used: z.string().nullable(),
+  remaining: z.string().nullable(),
+  remainingPercent: z.number().nullable(),
+  reached: z.boolean().nullable(),
+  resetAt: z.iso.datetime({ offset: true }).nullable(),
+  observedAt: z.iso.datetime({ offset: true }),
+  budgetOnly: z.boolean(),
+});
+
 export const AccountSummarySchema = z.object({
   accountId: z.string(),
   chatgptAccountId: z.string().nullable().optional(),
@@ -79,6 +91,7 @@ export const AccountSummarySchema = z.object({
   status: z.string(),
   securityWorkAuthorized: z.boolean().optional(),
   usage: AccountUsageSchema.nullable().optional(),
+  spendControl: AccountSpendControlSchema.nullable().optional(),
   resetAtPrimary: z.iso.datetime({ offset: true }).nullable().optional(),
   resetAtSecondary: z.iso.datetime({ offset: true }).nullable().optional(),
   resetAtMonthly: z.iso.datetime({ offset: true }).nullable().optional(),

@@ -8,6 +8,7 @@ from app.core.crypto import TokenEncryptor
 from app.core.plan_types import coerce_account_plan_type
 from app.core.usage.quota import apply_usage_quota
 from app.core.usage.refresh_policy import usage_freshness_horizon_seconds
+from app.core.usage.spend_controls import account_spend_control
 from app.core.usage.types import UsageTrendBucket, UsageWindowRow
 from app.core.utils.time import from_epoch_seconds
 from app.db.models import Account, AccountLimitWarmup, AccountStatus, UsageHistory
@@ -22,6 +23,7 @@ from app.modules.accounts.schemas import (
     AccountUsageTrend,
     UsageTrendPoint,
 )
+from app.modules.accounts.spend_control import build_spend_control_summary
 from app.modules.rate_limit_reset_credits.store import (
     RateLimitResetCreditsSnapshot,
     RateLimitResetCreditsStore,
@@ -110,6 +112,10 @@ def _account_to_summary(
     reset_credits_snapshot: RateLimitResetCreditsSnapshot | None = None,
 ) -> AccountSummary:
     plan_type = coerce_account_plan_type(account.plan_type, DEFAULT_PLAN)
+    spend_control = build_spend_control_summary(account)
+    spend_snapshot = account_spend_control(account)
+    if spend_snapshot is not None and not spend_snapshot.rate_limit_present:
+        primary_usage = secondary_usage = monthly_usage = None
     auth_status = _build_auth_status(account, encryptor) if include_auth else None
     effective_primary_usage, effective_secondary_usage = _effective_usage_windows(
         primary_usage,
@@ -119,6 +125,8 @@ def _account_to_summary(
     if monthly_usage is not None and usage_core.capacity_for_plan(plan_type, "monthly") is None:
         monthly_usage = None
     usage_refreshed_at = _latest_usage_recorded_at(primary_usage, secondary_usage, monthly_usage)
+    if spend_control is not None and (usage_refreshed_at is None or spend_control.observed_at > usage_refreshed_at):
+        usage_refreshed_at = spend_control.observed_at
     monthly_used_percent = _normalize_used_percent(monthly_usage)
     monthly_remaining_percent = usage_core.remaining_percent_from_used(monthly_used_percent)
     if monthly_usage is not None:
@@ -263,6 +271,7 @@ def _account_to_summary(
         status=effective_status.value,
         routing_policy=_normalize_account_routing_policy(account.routing_policy),
         security_work_authorized=bool(account.security_work_authorized),
+        spend_control=spend_control,
         usage=AccountUsage(
             primary_remaining_percent=primary_remaining_percent,
             secondary_remaining_percent=secondary_remaining_percent,

@@ -3,6 +3,7 @@ import { Clock, Flame, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { SpendControlQuota } from "./spend-control-quota";
 import { cn } from "@/lib/utils";
 import type { AccountTrendChartProps } from "@/features/accounts/components/account-trend-chart";
 import type {
@@ -257,7 +258,8 @@ export function AccountUsagePanel({
     <div className="min-w-0 space-y-4 rounded-lg border bg-muted/30 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("accounts.usage.title")}</h3>
       <div className={cn("grid gap-4", weeklyOnly || monthlyOnly ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2")}>
-        {monthlyOnly ? (
+        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
+        {account.spendControl?.budgetOnly ? null : monthlyOnly ? (
           <QuotaRow label={t("common.quota.monthly")} percent={monthly} resetAt={account.resetAtMonthly} />
         ) : (
           <>
@@ -266,7 +268,7 @@ export function AccountUsagePanel({
           </>
         )}
       </div>
-      <ResetCreditsRow
+      {!account.spendControl?.budgetOnly && <ResetCreditsRow
         accountId={account.accountId}
         resetCredits={resetCredits}
         loading={resetCreditsLoading}
@@ -274,7 +276,7 @@ export function AccountUsagePanel({
         nearestExpiresAt={account.resetCreditNearestExpiresAt ?? null}
         resetDisabled={resetDisabled}
         onReset={onReset}
-      />
+      />}
       <div className="rounded-md border bg-background/60 px-3 py-2">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("accounts.usage.requestLogsTotal")}</p>
         {hasRequestUsage ? (

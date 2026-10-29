@@ -160,6 +160,10 @@ class AccountState:
     routing_remaining_fraction: float | None = None
     routing_allow_new: bool = True
     routing_continuity_owner: bool = False
+    spend_control_exhausted: bool = False
+    spend_control_reset_at: int | None = None
+    spend_control_remaining_percent: float | None = None
+    spend_control_budget_only: bool = False
 
 
 @dataclass
@@ -564,6 +568,20 @@ def select_account(
         return SelectionResult(None, None)
     in_error_backoff: list[AccountState] = []
     all_states = list(states)
+    budget_blocked = [state for state in all_states if state.spend_control_exhausted]
+    all_states = [state for state in all_states if not state.spend_control_exhausted]
+    if not all_states and budget_blocked:
+        resets = [
+            state.spend_control_reset_at
+            for state in budget_blocked
+            if state.spend_control_reset_at is not None and state.spend_control_reset_at > current
+        ]
+        return SelectionResult(
+            None,
+            "Account spending budget exhausted; waiting for an updated upstream allowance",
+            error_code=USAGE_LIMIT_REACHED,
+            resets_at=min(resets) if resets else None,
+        )
     usage_exhaustion_state_list = list(usage_exhaustion_states) if usage_exhaustion_states is not None else all_states
     bypass_account_ids = None if bypass_quota_exceeded_account_ids is None else set(bypass_quota_exceeded_account_ids)
 

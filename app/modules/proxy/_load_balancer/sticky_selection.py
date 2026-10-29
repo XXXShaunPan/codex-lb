@@ -2125,4 +2125,8 @@ def _best_health_tier_states(states: list[AccountState]) -> list[AccountState]:
 
 
 def _clone_account(account: Account) -> Account:
-    return clone_row(account)
+    cloned = clone_row(account)
+    snapshot = account.spend_control_snapshot
+    if snapshot is not None:
+        cloned.spend_control_snapshot = clone_row(snapshot)
+    return cloned

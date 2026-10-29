@@ -10,6 +10,7 @@ import { useDateDisplayFormatStore } from "@/hooks/use-date-format";
 import { useSmoothPercent } from "@/hooks/use-smooth-percent";
 import { StatusBadge } from "@/components/status-badge";
 import { MiniQuotaBar } from "@/components/mini-quota-bar";
+import { SpendControlQuota } from "./spend-control-quota";
 import type {
   AccountRoutingPolicy,
   AccountSummary,
@@ -74,11 +75,11 @@ export function AccountListItem({
     account.resetAtMonthly != null ||
     monthlyState.everKnown;
   const monthlyOnly = hasMonthlyWindow && !hasPrimaryWindow && !hasSecondaryWindow;
-  const showMonthlyRow = monthlyOnly;
+  const showMonthlyRow = !account.spendControl?.budgetOnly && monthlyOnly;
   const showPrimaryRow =
-    !monthlyOnly && hasPrimaryWindow && (quotaDisplay !== "weekly" || !hasSecondaryWindow);
+    !account.spendControl?.budgetOnly && !monthlyOnly && hasPrimaryWindow && (quotaDisplay !== "weekly" || !hasSecondaryWindow);
   const showSecondaryRow =
-    !monthlyOnly && hasSecondaryWindow && (quotaDisplay !== "5h" || !hasPrimaryWindow);
+    !account.spendControl?.budgetOnly && !monthlyOnly && hasSecondaryWindow && (quotaDisplay !== "5h" || !hasPrimaryWindow);
   const visibleQuotaRows = Number(showPrimaryRow) + Number(showSecondaryRow) + Number(showMonthlyRow);
   const showRoutingPolicy = status !== "reauth" && status !== "deactivated";
   const warmupLabel = account.limitWarmupEnabled ? t("accounts.listItem.warmupOn") : t("accounts.listItem.warmupOff");
@@ -139,6 +140,7 @@ export function AccountListItem({
           visibleQuotaRows > 1 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1",
         )}
       >
+        {account.spendControl && <SpendControlQuota budget={account.spendControl} />}
         {showMonthlyRow ? (
           <MiniQuotaRow
             label={t("common.quota.monthly")}

@@ -18,6 +18,8 @@ class QuotaCandidate:
     sample_at: float = 0.0
     placeholder: bool = False
     invalid_quota: bool = False
+    budget_remaining: float | None = None
+    budget_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,15 +41,20 @@ def remaining_fraction(used: float | None) -> float | None:
 
 
 def threshold_remaining(candidate: QuotaCandidate, rule: PriorityRule) -> float | None:
+    if candidate.budget_only:
+        return candidate.budget_remaining
     if candidate.placeholder:
         return 1.0
     if rule.quota_basis == "weekly":
-        return candidate.weekly_remaining
-    if rule.quota_basis == "five_hour":
-        return candidate.primary_remaining if candidate.primary_applicable else None
-    windows = [candidate.weekly_remaining]
-    if candidate.primary_applicable:
-        windows.append(candidate.primary_remaining)
+        windows = [candidate.weekly_remaining]
+    elif rule.quota_basis == "five_hour":
+        windows = [candidate.primary_remaining if candidate.primary_applicable else None]
+    else:
+        windows = [candidate.weekly_remaining]
+        if candidate.primary_applicable:
+            windows.append(candidate.primary_remaining)
+    if candidate.budget_remaining is not None:
+        windows.append(candidate.budget_remaining)
     if any(value is None for value in windows):
         return None
     return min(value for value in windows if value is not None)
@@ -70,6 +77,10 @@ def make_decision(candidate: QuotaCandidate, rule: PriorityRule, low: bool) -> R
     windows = [candidate.weekly_remaining]
     if candidate.primary_applicable:
         windows.append(candidate.primary_remaining)
+    if candidate.budget_only:
+        windows = [candidate.budget_remaining]
+    elif candidate.budget_remaining is not None:
+        windows.append(candidate.budget_remaining)
     known = [value for value in windows if value is not None]
     remaining = 0.0 if candidate.invalid_quota else (1.0 if candidate.placeholder else min(known, default=0.0))
     return RoutingDecision(

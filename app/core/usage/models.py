@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UsageWindow(BaseModel):
@@ -41,6 +43,33 @@ class AdditionalRateLimitPayload(BaseModel):
     rate_limit: RateLimitPayload | None = None
 
 
+class IndividualSpendLimit(BaseModel):
+    model_config = ConfigDict(extra="ignore", allow_inf_nan=False)
+
+    source: str | None = None
+    unit: str | None = None
+    limit: Decimal | None = Field(default=None, ge=0)
+    used: Decimal | None = Field(default=None, ge=0)
+    remaining: Decimal | None = None
+    used_percent: float | None = Field(default=None, ge=0)
+    remaining_percent: float | None = None
+    reset_at: int | None = None
+    reset_after_seconds: int | None = Field(default=None, ge=0)
+
+
+class SpendControlPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    reached: bool | None = None
+    individual_limit: IndividualSpendLimit | None = None
+
+
+class SpendControlSnapshot(BaseModel):
+    control: SpendControlPayload | None = None
+    credits: CreditsPayload | None = None
+    rate_limit_present: bool = False
+
+
 class UsagePayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -52,3 +81,4 @@ class UsagePayload(BaseModel):
     credits: CreditsPayload | None = None
     rate_limit_reset_credits: RateLimitResetCreditsPayload | None = None
     additional_rate_limits: list[AdditionalRateLimitPayload] | None = None
+    spend_control: SpendControlPayload | None = None

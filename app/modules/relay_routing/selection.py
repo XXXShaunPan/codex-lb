@@ -35,6 +35,10 @@ def _candidate(state: AccountState) -> QuotaCandidate:
         primary_applicable=state.plan_type != "free",
         placeholder=state.account_id.startswith("model-source:"),
         invalid_quota=any(value is not None and not math.isfinite(value) for value in (primary, secondary)),
+        budget_remaining=(
+            state.spend_control_remaining_percent / 100 if state.spend_control_remaining_percent is not None else None
+        ),
+        budget_only=state.spend_control_budget_only,
     )
 
 
@@ -48,6 +52,8 @@ def _decision(state: AccountState) -> RoutingDecision:
 
 def effective_weight(state: AccountState) -> float:
     """Priorities/admission select the group; only weight and quota affect its draw."""
+    if state.spend_control_exhausted:
+        return 0.0
     if state.routing_continuity_owner:
         candidate = _candidate(state)
         known = [value for value in (candidate.primary_remaining, candidate.weekly_remaining) if value is not None]

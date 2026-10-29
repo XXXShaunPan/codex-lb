@@ -61,6 +61,11 @@ from app.core.resilience.degradation import set_degraded, set_normal
 from app.core.resilience.toggles import resolve_resilience_toggles
 from app.core.usage.quota import apply_usage_quota
 from app.core.usage.refresh_policy import usage_freshness_horizon_seconds
+from app.core.usage.spend_controls import (
+    account_spend_control,
+    spend_control_exhausted,
+    spend_control_remaining_percent,
+)
 from app.core.utils.time import to_utc_naive, utcnow
 from app.db.models import Account, AccountStatus, AdditionalUsageHistory, StickySessionKind, UsageHistory
 from app.db.snapshot import clone_row
@@ -2274,6 +2279,9 @@ def _state_from_account(
 ) -> AccountState:
     now = REAL_CLOCK.time() if now is None else now
     tunables = routing_tunables or effective_routing_tunables()
+    spend_snapshot = account_spend_control(account)
+    if spend_snapshot is not None and not spend_snapshot.rate_limit_present:
+        primary_entry = secondary_entry = None
     routing_policy = _normalize_account_routing_policy(getattr(account, "routing_policy", None))
     normalized_usage = _normalize_usage_inputs(
         account=account,
@@ -2563,6 +2571,7 @@ def _state_from_account(
     effective_used_percent = None if used_percent is None else min(100.0, used_percent + pressure_pct)
     effective_secondary_used_percent = None if secondary_used is None else min(100.0, secondary_used + pressure_pct)
     usage_exhaustion_evidence_status = status in (AccountStatus.QUOTA_EXCEEDED, AccountStatus.RATE_LIMITED)
+    control = spend_snapshot.control if spend_snapshot is not None else None
 
     return AccountState(
         account_id=account.id,
@@ -2570,6 +2579,14 @@ def _state_from_account(
         used_percent=effective_used_percent,
         routing_weight=account.routing_weight if account.routing_weight is not None else 1.0,
         quota_used_percent=used_percent,
+        spend_control_exhausted=spend_control_exhausted(control),
+        spend_control_remaining_percent=spend_control_remaining_percent(control) if control is not None else None,
+        spend_control_budget_only=control is not None
+        and spend_snapshot is not None
+        and not spend_snapshot.rate_limit_present,
+        spend_control_reset_at=(
+            control.individual_limit.reset_at if control is not None and control.individual_limit is not None else None
+        ),
         quota_secondary_used_percent=secondary_used,
         reset_at=reset_at,
         primary_reset_at=primary_reset,
@@ -2606,6 +2623,9 @@ def _normalize_usage_inputs(
     now_epoch: int,
 ) -> _NormalizedUsageInputs:
     """Normalize persisted usage for routing and explicit probe settlement."""
+    spend_snapshot = account_spend_control(account)
+    if spend_snapshot is not None and not spend_snapshot.rate_limit_present:
+        primary_entry = secondary_entry = None
     primary_used = primary_entry.used_percent if primary_entry else None
     primary_reset = primary_entry.reset_at if primary_entry else None
     primary_window_minutes = primary_entry.window_minutes if primary_entry else None

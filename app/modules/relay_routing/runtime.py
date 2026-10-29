@@ -6,6 +6,7 @@ from datetime import timezone
 from typing import TYPE_CHECKING
 
 from app.core import usage as usage_core
+from app.core.usage.spend_controls import account_spend_control, spend_control_remaining_percent
 from app.db.models import Account, AdditionalUsageHistory, ModelSource, UsageHistory
 from app.db.session import get_background_session
 from app.modules.relay_routing.policy import QuotaCandidate, RoutingDecision, remaining_fraction
@@ -49,6 +50,13 @@ async def load_priority_decisions(
         )
         observed_rows = [row for row in (primary, effective_secondary) if row is not None]
         sample_at = sum(row.recorded_at.replace(tzinfo=timezone.utc).timestamp() for row in observed_rows)
+        snapshot = account_spend_control(account)
+        control = snapshot.control if snapshot is not None else None
+        budget_only = control is not None and snapshot is not None and not snapshot.rate_limit_present
+        budget_percent = spend_control_remaining_percent(control) if control is not None else None
+        if account.spend_control_snapshot is not None:
+            budget_sample = account.spend_control_snapshot.observed_at.replace(tzinfo=timezone.utc).timestamp()
+            sample_at = budget_sample if budget_only else sample_at + budget_sample
         candidates.append(
             QuotaCandidate(
                 account_id=account.id,
@@ -57,7 +65,10 @@ async def load_priority_decisions(
                 weekly_remaining=remaining_fraction(normalized.secondary_used),
                 primary_applicable=primary_applicable,
                 sample_at=sample_at,
-                invalid_quota=any(
+                budget_remaining=budget_percent / 100 if budget_percent is not None else None,
+                budget_only=budget_only,
+                invalid_quota=not budget_only
+                and any(
                     value is not None and not math.isfinite(value)
                     for value in (
                         normalized.primary_used,
