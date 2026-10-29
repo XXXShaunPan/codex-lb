@@ -34,6 +34,8 @@ The later USD display uses spendControl.remaining in existing subscription-quota
 card/table fields, with the USD symbol. This presentation value is not fed into
 credit aggregates or probability scores, and unlike units are not compared as
 one numeric quantity when sorting. Missing/non-USD balances stay unknown.
+This USD display and quadratic routing refinement were activated on 2026-10-29;
+see the [deployment record](../../changes/archive/2026-10-29-quadratic-quota-usd-balance/deployment.md).
 The operator separately authorized activation on 2026-10-29; see the
 [monthly/flat-pool deployment record](../../changes/archive/2026-10-29-monthly-quota-flat-weighted-routing/deployment.md).
 

@@ -25,6 +25,8 @@ provider polling is implemented.
 The quadratic refinement squares only quota, not custom weight. Equal weights
 at 80% and 20% remaining yield 16:1 odds, giving stronger separation while
 keeping positive low-quota accounts eligible. Existing ownership is unchanged.
+It was activated on 2026-10-29 after all cloud checks passed; see the
+[quadratic/USD rollout record](../../changes/archive/2026-10-29-quadratic-quota-usd-balance/deployment.md).
 
 Legacy `relay_routing_rules` and `relay_routing_quota_bands` records are retained,
 but neither native nor mixed-source assignment reads or updates them. The admin

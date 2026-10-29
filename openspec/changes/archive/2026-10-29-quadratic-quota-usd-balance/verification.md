@@ -18,8 +18,8 @@
 
 The runtime change is limited to squaring the measured quota fraction. No extra
 threshold, priority group, subscription-credit conversion, schema migration or
-live weight edit is introduced. Publication and activation remain pending until
-matching-head cloud checks and backup verification complete.
+live weight edit is introduced. Publication and activation completed after
+matching-head cloud checks and backup verification; see [deployment](deployment.md).
 
 The first cloud run passed the full native relay gate, Windows and Ubuntu jobs.
 Its macOS ARM job never received a runner and was cancelled by hosted capacity
@@ -28,3 +28,18 @@ exhaustion, not by a test failure
 The retry uses the standard `macos-15-intel` label documented by
 [GitHub](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 macOS, system Bash and zsh tests remain enabled; no test or release check is skipped.
+
+All four jobs then passed on `3044b67f` in
+[the verified run](https://github.com/XXXShaunPan/codex-lb/actions/runs/40904311531).
+The same browser scenario passed against the live service's deployed assets;
+API fixtures remained mocked. Read-only real database checks verified three
+ent26 monthly/USD snapshots and quadratic scores, three Source placeholders,
+and unchanged credentials, weights, assignments and legacy rule data.
+
+## Final assessment
+
+Completeness: six tasks complete, four requirements covered. Correctness: exact
+scores, distribution and boundary cases plus native/image routes and both USD
+surfaces verified. Coherence: the existing flat pool and credit accounting stay
+intact; only quota is squared and USD is a separate display unit. No outstanding
+implementation or deployment findings. Main specifications and user docs are synced.
