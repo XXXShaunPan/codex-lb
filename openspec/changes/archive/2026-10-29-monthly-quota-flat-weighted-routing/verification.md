@@ -50,7 +50,13 @@
 
 ## Operational boundary
 
-This is a local source change on top of 0d7bfa76. No branch, commit, push, live
+The subsequent publication gate identified one image mixed-pool integration
+test that still asserted the retired priority-group ordering. It now controls
+only the random outcome while asserting that both candidates participate with
+scores (0.6, 1.0), then (0.1, 1.0), and that zero source weight excludes it.
+This preserves end-to-end image routing coverage under the new contract.
+
+At the original local-verification stage, the source was based on 0d7bfa76. No branch, commit, push, live
 configuration update, migration, service restart, credential reset or frontend
 publication was performed. Normal production background activity was not paused.
 Service PID remained 5552, and the served entry file SHA256 remained

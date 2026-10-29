@@ -398,7 +398,7 @@ async def test_images_generations_returns_envelope_on_success(async_client, monk
 
 
 @pytest.mark.asyncio
-async def test_images_mixed_pool_uses_shared_priority_groups(async_client, monkeypatch):
+async def test_images_mixed_pool_uses_flat_quota_weighted_probabilities(async_client, monkeypatch):
     from datetime import timedelta
 
     from aiohttp import web
@@ -412,6 +412,22 @@ async def test_images_mixed_pool_uses_shared_priority_groups(async_client, monke
     await async_client.put("/api/settings", json={"routingStrategy": "custom_weighted_quota"})
     await async_client.put("/api/image-routing/settings", json={"hostModel": "gpt-5.4"})
     calls = []
+    choose_source = False
+    mixed_draws = []
+
+    def draw(population, weights, k):
+        assert k == 1
+        real = [state for state in population if not state.account_id.startswith("model-source:")]
+        virtual = [state for state in population if state.account_id.startswith("model-source:")]
+        if real and virtual:
+            assert len(real) == len(virtual) == 1
+            scores = {state.account_id: weight for state, weight in zip(population, weights)}
+            mixed_draws.append((scores[real[0].account_id], scores[virtual[0].account_id]))
+        # Control only the random outcome. Assertions below require both real
+        # and source candidates to reach the same draw with their actual scores.
+        return [virtual[0] if choose_source and virtual else (real or virtual)[0]]
+
+    monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
 
     async def subscription(payload, *args, **kwargs):
         assert payload.model == "gpt-5.4"
@@ -471,12 +487,15 @@ async def test_images_mixed_pool_uses_shared_priority_groups(async_client, monke
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription"]
+        assert mixed_draws == [(0.6, 1.0)]
         await set_quota(90, 1)
+        choose_source = True
         assert (
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription", "source"]
-        # Explicit zero weight removes the source even when Plus is downgraded.
+        assert mixed_draws == [(0.6, 1.0), (0.1, 1.0)]
+        # Explicit zero weight removes the source; a low-quota Plus stays eligible.
         assert (
             await async_client.put(f"/api/relay-routing/weights/model-source:{source}", json={"weight": 0})
         ).status_code == 200
@@ -484,6 +503,7 @@ async def test_images_mixed_pool_uses_shared_priority_groups(async_client, monke
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription", "source", "subscription"]
+        assert mixed_draws == [(0.6, 1.0), (0.1, 1.0)]
 
 
 @pytest.mark.asyncio
