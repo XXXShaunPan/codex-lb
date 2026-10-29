@@ -8,8 +8,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import type { AccountAction } from "@/features/dashboard/components/account-card";
 import {
-  accountSubscriptionCredits,
-  formatCreditValue,
+  accountSubscriptionQuota,
+  formatSubscriptionQuota,
   formatPurchasedCredits,
 } from "@/features/dashboard/account-credit-display";
 import type { AccountSummary } from "@/features/dashboard/schemas";
@@ -177,9 +177,15 @@ function compareAccountsBySort(a: AccountSummary, b: AccountSummary, sort: Accou
     case "quota":
       result = compareNullableNumber(accountQuotaSortValue(a), accountQuotaSortValue(b), sort.direction);
       break;
-    case "subscriptionCredits":
-      result = compareNullableNumber(accountSubscriptionCredits(a), accountSubscriptionCredits(b), sort.direction);
+    case "subscriptionCredits": {
+      const left = accountSubscriptionQuota(a);
+      const right = accountSubscriptionQuota(b);
+      // Compare like units only; USD is not a subscription-credit quantity.
+      result = left.unit === right.unit
+        ? compareNullableNumber(left.value, right.value, sort.direction)
+        : compareText(left.unit, right.unit);
       break;
+    }
     case "purchasedCredits":
       result = compareNullableNumber(accountPurchasedCreditsSortValue(a), accountPurchasedCreditsSortValue(b), sort.direction);
       break;
@@ -410,7 +416,7 @@ export function AccountList({
               <span className="text-xs text-muted-foreground">{formatSlug(account.planType)}</span>
               <AccountQuotaCells account={account} />
 	              <span className="font-medium tabular-nums">
-	                {formatCreditValue(accountSubscriptionCredits(account))}
+	                {formatSubscriptionQuota(account)}
 	              </span>
 	              <span className="font-medium tabular-nums">
 	                {formatPurchasedCredits(account, t("common.states.unlimited"))}

@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { hasMonthlyQuota } from "@/features/accounts/quota-windows";
 import {
-  accountSubscriptionCredits,
-  formatCreditValue,
+  formatSubscriptionQuota,
   formatPurchasedCredits,
 } from "@/features/dashboard/account-credit-display";
 import { cn } from "@/lib/utils";
@@ -102,7 +101,7 @@ export function AccountCard({ account, showAccountId = false, readOnly = false, 
   const hasMonthlyWindow = hasMonthlyQuota(account) || monthlyState.everKnown;
   const weeklyOnly = !hasPrimaryWindow && hasSecondaryWindow;
   const monthlyOnly = hasMonthlyWindow && !hasPrimaryWindow && !hasSecondaryWindow;
-  const subscriptionCreditsLabel = formatCreditValue(accountSubscriptionCredits(account));
+  const subscriptionCreditsLabel = formatSubscriptionQuota(account);
   const purchasedCreditsLabel = formatPurchasedCredits(account, t("common.states.unlimited"));
 
   const primaryReset = formatQuotaResetLabel(account.resetAtPrimary ?? null);

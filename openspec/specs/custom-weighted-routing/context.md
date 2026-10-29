@@ -15,12 +15,16 @@ Source-only embeddings also use the same weights, with subscription accounts
 excluded from their candidate pool.
 
 The flat-pool follow-up retires the priority extension from assignment. Every
-eligible account competes by `weight * minimum_known_remaining_fraction`, with
+eligible account competes by `weight * minimum_known_remaining_fraction^2`, with
 probability equal to its score divided by the total score. This is a random draw,
-not an argmax: weight 2 at 50% and weight 1 at 100% have equal probability across
+not an argmax: weight 4 at 50% and weight 1 at 100% have equal probability across
 plans. ent26 uses its upstream monthly allowance; different dollar limits do not
 change a percentage score. A Model Source remains at a 100% placeholder until
 provider polling is implemented.
+
+The quadratic refinement squares only quota, not custom weight. Equal weights
+at 80% and 20% remaining yield 16:1 odds, giving stronger separation while
+keeping positive low-quota accounts eligible. Existing ownership is unchanged.
 
 Legacy `relay_routing_rules` and `relay_routing_quota_bands` records are retained,
 but neither native nor mixed-source assignment reads or updates them. The admin

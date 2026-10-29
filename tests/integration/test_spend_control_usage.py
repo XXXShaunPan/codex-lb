@@ -162,7 +162,7 @@ async def test_routing_uses_monthly_budget_without_priority_runtime(async_client
             now=1793181600,
             soft_drain_enabled=False,
         )
-        assert effective_weight(state) == 0.58
+        assert effective_weight(state) == pytest.approx(0.58**2)
         assert select_account([state], routing_strategy="custom_weighted_quota").account is not None
 
 
@@ -183,7 +183,7 @@ async def test_native_and_mixed_source_pool_share_ent26_percentage_scores(async_
     ).status_code == 200
     assert (await async_client.put("/api/relay-routing/weights/budget-b", json={"weight": 3})).status_code == 200
     balancer = get_proxy_service_for_app(app)._load_balancer
-    expected = {"budget-a": 0.58, "budget-b": 1.74, "model-source:compass": 2.0}
+    expected = {"budget-a": 0.58**2, "budget-b": 3 * 0.58**2, "model-source:compass": 2.0}
     observed = []
 
     def draw(population, weights, k):

@@ -14,6 +14,21 @@ afterEach(() => {
 });
 
 describe("AccountList", () => {
+  it("sorts USD balances within their own unit rather than comparing dollars to credits", () => {
+    const ent = (accountId: string, remaining: string) => createAccountSummary({
+      accountId, displayName:accountId, planType:"ent26",
+      spendControl:{unit:"usd",remaining,limit:"200",used:null,remainingPercent:50,
+        reached:false,resetAt:null,observedAt:"2026-10-29T00:00:00Z",budgetOnly:true},
+    });
+    render(<AccountList sort={{key:"subscriptionCredits",direction:"asc"}} accounts={[
+      ent("high-usd", "100"), ent("low-usd", "10"),
+      createAccountSummary({accountId:"credits",displayName:"credits",remainingCreditsSecondary:5000}),
+    ]} />);
+    const rows = screen.getAllByTestId("account-list-row");
+    expect(rows[0]).toHaveTextContent("5000.00");
+    expect(rows[1]).toHaveTextContent("$10.00");
+    expect(rows[2]).toHaveTextContent("$100.00");
+  });
   function rowNames() {
     return screen.getAllByTestId("account-list-row").map((row) => {
       const paragraph = within(row).getAllByText(/Account$/)[0];

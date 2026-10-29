@@ -76,7 +76,7 @@ async def test_legacy_rules_are_inert_but_weight_changes_affect_new_selection(as
     monkeypatch.setattr(RoutingRulesRepository, "decisions", decisions)
 
     def draw(population, weights, k):
-        assert weights == pytest.approx([0.6] * len(population))
+        assert weights == pytest.approx([0.36] * len(population))
         return [next((s for s in population if s.account_id == "pro-a"), population[0])]
 
     monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
@@ -158,7 +158,7 @@ async def test_unknown_quota_and_virtual_mixed_pool(async_client, monkeypatch):
 
         def draw(population, weights, k):
             assert {state.account_id: weight for state, weight in zip(population, weights)} == {
-                "plus-a": 0.6,
+                "plus-a": 0.6**2,
                 "model-source:compass": 1.0,
             }
             return [next(state for state in population if state.account_id == "plus-a")]

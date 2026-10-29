@@ -22,7 +22,7 @@ function surface(name: string, account: AccountSummary) {
 }
 
 describe.each(["list", "card", "table", "details"])("enterprise monthly quota: %s", name => {
-  it("uses the regular monthly percentage/reset row, without budget amounts or obsolete windows", () => {
+  it("keeps monthly percentage/reset and shows dollars only in the existing subscription field", () => {
     const account = createAccountSummary({
       planType: "ent26", spendControl: budget,
       // Retained short/weekly values model a live transition from cached data.
@@ -34,7 +34,9 @@ describe.each(["list", "card", "table", "details"])("enterprise monthly quota: %
     expect(screen.getByText("58%")).toBeInTheDocument();
     expect(container.textContent).toContain(formatQuotaResetLabel(budget.resetAt));
     expect(screen.queryByText(/Spending budget|支出额度/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/116\.67|Limit: 200|Used: 83\.33/)).not.toBeInTheDocument();
+    if (name === "card" || name === "table") expect(screen.getByText("$116.67")).toBeInTheDocument();
+    else expect(screen.queryByText(/116\.67/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Limit: 200|Used: 83\.33/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^5h( remaining)?$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Weekly( remaining)?$/)).not.toBeInTheDocument();
   });

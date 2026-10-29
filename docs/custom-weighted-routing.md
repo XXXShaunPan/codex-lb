@@ -12,7 +12,7 @@ groups or low-quota downgrade rules. Legacy priority configuration is no longer
 shown or consulted during allocation; its stored records are retained for
 compatibility, and the old admin APIs are marked deprecated.
 
-`score = configured weight × minimum known remaining fraction`.
+`score = configured weight × (minimum known remaining fraction)²`.
 `P(account) = score / sum(all eligible scores)`.
 The fraction is the minimum of applicable normalized short and long quota
 windows (weekly or monthly as appropriate), bounded to 0..1. The ent26 monthly
@@ -21,9 +21,14 @@ monetary allowance sizes do not change the score. Missing windows are not
 invented. Completely unknown/invalid quota receives no new assignments.
 Model Sources, including Compass, retain 100% and no five-hour
 window; that is explicitly a **routing placeholder, not real upstream balance**.
-An account with weight 2 and 50% remaining has the same probability as one
+An account with weight 4 and 50% remaining has the same probability as one
 with weight 1 and 100% remaining. Selection is a proportional random draw,
 not a guarantee of an exact ratio over a small number of requests.
+
+Squaring the quota strengthens preference without a hard cutoff: with equal
+weights, 80% versus 20% remaining gives a 16:1 score ratio (about 94.1% / 5.9%
+selection probability), instead of the previous linear 4:1 ratio. Only quota is
+squared; the custom weight still scales the score linearly.
 
 Across the whole pool, plan capacity, reset preference, burn/preserve preference, soft health
 tiers, planner cost, latency, error-rate multipliers and synthetic inflight

@@ -50,18 +50,18 @@ def account(name="a", **kwargs):
 @pytest.mark.parametrize(
     "weight,primary,secondary,expected",
     [
-        (2, 50, 10, 1),
+        (2, 50, 10, 0.5),
         (1, 0, 0, 1),
         (3, None, 0, 3),
         (0, 0, 0, 0),
         (2, 100, 0, 0),
         (2, 0, 100, 0),
         (1, None, None, 0),
-        (4, -5, 75, 1),
+        (4, -5, 75, 0.25),
         (1, float("nan"), 0, 0),
     ],
 )
-def test_weight_times_tightest_quota(weight, primary, secondary, expected):
+def test_weight_times_squared_tightest_quota(weight, primary, secondary, expected):
     assert (
         effective_weight(account(routing_weight=weight, used_percent=primary, secondary_used_percent=secondary))
         == expected
@@ -71,7 +71,7 @@ def test_weight_times_tightest_quota(weight, primary, secondary, expected):
 def test_ranking_factors_do_not_change_draw_weights(monkeypatch):
     a = account(
         "a",
-        routing_weight=2,
+        routing_weight=4,
         used_percent=50,
         secondary_used_percent=0,
         plan_type="prolite",
@@ -132,7 +132,7 @@ def test_reported_quota_is_used_instead_of_synthetic_pressure():
         inflight_streams=40,
         leased_tokens=100000,
     )
-    assert effective_weight(state) == 1.5
+    assert effective_weight(state) == 0.75
 
 
 @pytest.mark.parametrize(
@@ -158,7 +158,7 @@ def test_reported_quota_is_used_instead_of_synthetic_pressure():
     ],
 )
 def test_minimum_of_reported_windows_and_monthly_budget(kwargs, expected):
-    assert effective_weight(account(**kwargs)) == pytest.approx(expected)
+    assert effective_weight(account(**kwargs)) == pytest.approx(expected**2)
 
 
 def test_source_quota_is_a_full_placeholder_not_a_plan_capacity():
@@ -175,12 +175,12 @@ def test_saved_priority_and_low_band_cannot_override_current_quota():
         routing_remaining_fraction=0,
         routing_allow_new=False,
     )
-    assert effective_weight(state) == pytest.approx(0.4)
+    assert effective_weight(state) == pytest.approx(0.08)
 
 
 def test_random_distribution_includes_lower_scores_and_different_plans(monkeypatch):
     states = [
-        account("plus", plan_type="plus", used_percent=50, routing_weight=2),
+        account("plus", plan_type="plus", used_percent=50, routing_weight=4),
         account("ent26", plan_type="ent26", spend_control_budget_only=True, spend_control_remaining_percent=100),
         account("model-source:compass", routing_weight=0.5),
     ]
@@ -191,6 +191,18 @@ def test_random_distribution_includes_lower_scores_and_different_plans(monkeypat
     assert 0.38 < counts["plus"] / 10000 < 0.42
     assert 0.38 < counts["ent26"] / 10000 < 0.42
     assert 0.18 < counts["model-source:compass"] / 10000 < 0.22
+
+
+def test_quadratic_quota_widens_probability_gap_without_starving_positive_quota(monkeypatch):
+    high = account("high", used_percent=20)
+    low = account("low", used_percent=80)
+    assert effective_weight(high) / effective_weight(low) == pytest.approx(16)
+    monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", random.Random(20261030).choices)
+    counts = Counter(select_weighted_quota([high, low]).account_id for _ in range(10000))
+    assert 0.93 < counts["high"] / 10000 < 0.95
+    assert 0.05 < counts["low"] / 10000 < 0.07
+    # Custom weights themselves remain linear rather than being squared too.
+    assert effective_weight(replace(low, routing_weight=16)) == pytest.approx(effective_weight(high))
 
 
 @pytest.mark.parametrize(
@@ -233,7 +245,7 @@ def test_state_builder_retains_operator_weight_and_reported_usage():
     )
     assert states[0].routing_weight == 4
     assert states[0].quota_used_percent == 25
-    assert effective_weight(states[0]) == 3
+    assert effective_weight(states[0]) == 2.25
 
 
 @pytest.mark.asyncio

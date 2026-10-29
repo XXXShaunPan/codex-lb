@@ -19,7 +19,8 @@ the snapshot. Successful polling invalidates selection caches and its durable
 observation timestamp prevents polling storms when subscription windows are
 absent. Explicit null clears the budget; omission/errors retain prior evidence.
 
-Budget-only accounts use their budget percentage in custom weighted routing.
+Budget-only accounts use their budget percentage in custom weighted routing;
+the tightest remaining fraction is squared before applying the custom weight.
 All eligible plans share one probability pool; legacy priority/hysteresis rules
 are no longer consulted. Reached controls are a hard
 filter even when standard subscription quota is bypassed. Elapsing a reset time
@@ -29,6 +30,10 @@ The monthly/flat-pool follow-up projects ent26 percentage and reset time into
 the existing monthly account-summary fields. Standard quota rows replace the
 separate spending-budget panel. Raw monetary snapshots/API fields remain for
 compatibility; no duration, reset date or subscription credits are fabricated.
+The later USD display uses spendControl.remaining in existing subscription-quota
+card/table fields, with the USD symbol. This presentation value is not fed into
+credit aggregates or probability scores, and unlike units are not compared as
+one numeric quantity when sorting. Missing/non-USD balances stay unknown.
 The operator separately authorized activation on 2026-10-29; see the
 [monthly/flat-pool deployment record](../../changes/archive/2026-10-29-monthly-quota-flat-weighted-routing/deployment.md).
 

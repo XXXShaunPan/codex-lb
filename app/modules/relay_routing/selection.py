@@ -32,7 +32,7 @@ def remaining_quota_fraction(state: AccountState) -> float:
 
 
 def effective_weight(state: AccountState) -> float:
-    """Only custom weight and reported quota determine a new assignment's score."""
+    """Square the tightest quota fraction, keeping operator weight linear."""
     if state.spend_control_exhausted:
         return 0.0
     if state.routing_continuity_owner:
@@ -50,7 +50,7 @@ def effective_weight(state: AccountState) -> float:
     weight = state.routing_weight
     if not math.isfinite(weight) or weight <= 0:
         return 0.0
-    return weight * remaining_quota_fraction(state)
+    return weight * remaining_quota_fraction(state) ** 2
 
 
 def select_weighted_quota(

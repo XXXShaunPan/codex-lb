@@ -487,14 +487,14 @@ async def test_images_mixed_pool_uses_flat_quota_weighted_probabilities(async_cl
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription"]
-        assert mixed_draws == [(0.6, 1.0)]
+        assert mixed_draws == [(0.6**2, 1.0)]
         await set_quota(90, 1)
         choose_source = True
         assert (
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription", "source"]
-        assert mixed_draws == [(0.6, 1.0), (0.1, 1.0)]
+        assert mixed_draws == [(0.6**2, 1.0), (0.1**2, 1.0)]
         # Explicit zero weight removes the source; a low-quota Plus stays eligible.
         assert (
             await async_client.put(f"/api/relay-routing/weights/model-source:{source}", json={"weight": 0})
@@ -503,7 +503,7 @@ async def test_images_mixed_pool_uses_flat_quota_weighted_probabilities(async_cl
             await async_client.post("/v1/images/generations", json={"model": "gpt-image-2", "prompt": "test"})
         ).status_code == 200
         assert calls == ["subscription", "source", "subscription"]
-        assert mixed_draws == [(0.6, 1.0), (0.1, 1.0)]
+        assert mixed_draws == [(0.6**2, 1.0), (0.1**2, 1.0)]
 
 
 @pytest.mark.asyncio

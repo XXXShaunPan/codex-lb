@@ -1,0 +1,6 @@
+- [x] Implement squared-quota scores and update all routing regression expectations.
+- [x] Display ent26 USD balance in existing subscription quota surfaces with unit-safe sorting.
+- [x] Update explanations/specs and verify backend, frontend, browser and build checks.
+- [ ] Commit/push and pass matching-head cloud CI.
+- [ ] Back up, deploy, restart and verify live quotas/credentials/weights and frontend.
+- [ ] Record rollout evidence and archive the completed change.

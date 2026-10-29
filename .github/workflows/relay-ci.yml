@@ -56,7 +56,7 @@ jobs:
       - working-directory: frontend
         run: bun run build
       - working-directory: frontend
-        run: bun run test src/features/accounts/components/monthly-enterprise-quota.test.tsx src/features/accounts/components/account-usage-panel.test.tsx src/features/accounts/components/account-list-item.test.tsx src/features/dashboard/components/account-card.test.tsx src/features/dashboard/components/account-list.test.tsx src/features/accounts/sorting.test.ts src/features/api-keys/components/account-multi-select.test.tsx
+        run: bun run test src/features/accounts/components/monthly-enterprise-quota.test.tsx src/features/accounts/components/account-usage-panel.test.tsx src/features/accounts/components/account-list-item.test.tsx src/features/dashboard/components/account-card.test.tsx src/features/dashboard/components/account-list.test.tsx src/features/dashboard/account-credit-display.test.ts src/features/accounts/sorting.test.ts src/features/api-keys/components/account-multi-select.test.tsx
       # Keep the CLI used to validate the upstream spec baseline reproducible.
       - run: npx --yes @fission-ai/openspec@1.13.1 validate --specs --strict
   native-config-commands:

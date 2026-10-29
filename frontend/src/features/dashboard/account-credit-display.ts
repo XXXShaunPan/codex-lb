@@ -1,4 +1,26 @@
 import type { AccountSummary } from "@/features/dashboard/schemas";
+import { formatCurrency } from "@/utils/formatters";
+
+type SubscriptionQuota = { unit: "usd" | "credits"; value: number | null };
+
+export function accountSubscriptionQuota(account: AccountSummary): SubscriptionQuota {
+  if (account.planType !== "ent26") {
+    return { unit: "credits", value: accountSubscriptionCredits(account) };
+  }
+  const remaining = account.spendControl?.remaining;
+  const amount = remaining == null || remaining.trim() === "" ? null : Number(remaining);
+  return {
+    unit: "usd",
+    value: account.spendControl?.unit?.trim().toLowerCase() === "usd" && amount !== null && Number.isFinite(amount)
+      ? amount : null,
+  };
+}
+
+export function formatSubscriptionQuota(account: AccountSummary): string {
+  const quota = accountSubscriptionQuota(account);
+  if (quota.value === null) return "-";
+  return quota.unit === "usd" ? formatCurrency(quota.value) : formatCreditValue(quota.value);
+}
 
 export function accountSubscriptionCredits(account: AccountSummary): number | null {
   const monthlyOnly =

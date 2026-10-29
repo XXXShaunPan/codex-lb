@@ -71,6 +71,7 @@ describe("custom weight and remaining quota routing", () => {
     );
     renderWithProviders(<RoutingWeightSettings />);
     expect(screen.getByText(/Scores define random probabilities/)).toBeInTheDocument();
+    expect(screen.getByText(/square of the lowest applicable/)).toBeInTheDocument();
     expect(screen.getByText(/lowest applicable remaining quota fraction/)).toBeInTheDocument();
     expect(screen.getByText(/100% is only a routing placeholder/)).toBeInTheDocument();
     expect(screen.queryByText("Plan and account priority rules")).not.toBeInTheDocument();

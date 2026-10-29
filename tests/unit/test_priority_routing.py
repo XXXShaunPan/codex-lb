@@ -36,7 +36,7 @@ def test_all_plans_participate_without_plus_preference(monkeypatch):
 
     def draw(population, weights, k):
         assert population == [*others, plus]
-        assert weights == [500000] * 100 + [0.5]
+        assert weights == [250000] * 100 + [0.25]
         return [others[0]]
 
     monkeypatch.setattr("app.modules.relay_routing.selection.random.choices", draw)
@@ -48,7 +48,7 @@ def test_low_quota_participates_but_zero_exhausted_and_disabled_do_not(monkeypat
 
     def draw(population, weights, k):
         assert population == [low, other, healthy]
-        assert weights == pytest.approx([0.19, 0.5, 0.5])
+        assert weights == pytest.approx([0.19**2, 0.25, 0.25])
         return [low]
 
     with monkeypatch.context() as patch:
@@ -60,8 +60,8 @@ def test_low_quota_participates_but_zero_exhausted_and_disabled_do_not(monkeypat
     assert choose([replace(healthy, status=AccountStatus.PAUSED), other]) is other
 
 
-def test_same_group_uses_only_weight_times_remaining(monkeypatch):
-    a, b = state("a", remaining=0.5, weight=2), state("b", remaining=1, weight=1)
+def test_same_pool_uses_only_weight_times_squared_remaining(monkeypatch):
+    a, b = state("a", remaining=0.5, weight=4), state("b", remaining=1, weight=1)
 
     def draw(population, weights, k):
         assert population == [a, b] and weights == [1, 1]

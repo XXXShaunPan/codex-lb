@@ -53,7 +53,7 @@ Provider（没有则创建 `openai_https`），把 token 直接写进 config.tom
 图片 token/费用按图片模型记录，不拿宿主文本 token 冒充。
 
 Model Source 在模型列表中启用 `gpt-image-2` 后，会参与与实体账号相同的
-路由策略和 Key 分配选择。在自定义加权策略下，所有账户按权重乘以各自最低剩余比例
+路由策略和 Key 分配选择。在自定义加权策略下，所有账户按权重乘以各自最低剩余比例的平方
 随机分配，不使用套餐/账号优先级或额度降级组。被选中后直接调用上游 Images API，
 不经实体账号宿主。图片编辑会转发图片及 mask；source-only Key 无需实体账号。
 流式请求仍需在 source 的该模型条目启用 streaming。
