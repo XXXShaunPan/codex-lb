@@ -20,3 +20,11 @@ The runtime change is limited to squaring the measured quota fraction. No extra
 threshold, priority group, subscription-credit conversion, schema migration or
 live weight edit is introduced. Publication and activation remain pending until
 matching-head cloud checks and backup verification complete.
+
+The first cloud run passed the full native relay gate, Windows and Ubuntu jobs.
+Its macOS ARM job never received a runner and was cancelled by hosted capacity
+exhaustion, not by a test failure
+([run](https://github.com/XXXShaunPan/codex-lb/actions/runs/40901101383)).
+The retry uses the standard `macos-15-intel` label documented by
+[GitHub](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+macOS, system Bash and zsh tests remain enabled; no test or release check is skipped.
